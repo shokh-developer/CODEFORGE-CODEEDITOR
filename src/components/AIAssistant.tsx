@@ -637,8 +637,8 @@ Rules:
             "h-12 w-12 rounded-xl shadow-lg transition-all duration-200",
             "flex items-center justify-center backdrop-blur-sm",
             isOpen
-              ? "bg-primary/20 text-primary border border-primary/50"
-              : "bg-card/90 text-primary border border-border hover:border-primary/50 hover:bg-card"
+              ? "bg-primary/20 text-primary border border-primary/50 glow-sm"
+              : "bg-card/90 text-primary border border-border hover:border-primary/50 hover:bg-card hover:glow-sm"
           )}
           title={`Developed by ${author}`}
         >
