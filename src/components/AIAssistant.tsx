@@ -730,7 +730,7 @@ Rules:
             </div>
 
             {/* Messages */}
-            <ScrollArea className={`flex-1 p-4 ${isExpanded ? "h-full" : "h-[400px]"}`} ref={scrollRef}>
+            <ScrollArea className="flex-1 p-4" ref={scrollRef}>
               {messages.length === 0 ? (
                 <div className="space-y-4">
                   <div className="text-center mb-4">
