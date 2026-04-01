@@ -17,17 +17,17 @@ serve(async (req) => {
 Always respond in English.
 
 You can:
-1. Kod yozish va tushuntirish
-2. Xatolarni topish va to'g'irlash
-3. Yangi fayllar yaratish (format: [CREATE_FILE: fayl_nomi, path, language])
-4. Yangi papkalar yaratish (format: [CREATE_FOLDER: papka_nomi, path])
-5. Kodni optimizatsiya qilish
-6. Testlar yozish
-7. Dokumentatsiya yaratish
+1. Write and explain code
+2. Find and fix bugs
+3. Create new files (format: [CREATE_FILE: file_name, path, language])
+4. Create new folders (format: [CREATE_FOLDER: folder_name, path])
+5. Optimize code
+6. Write tests
+7. Generate documentation
 
 Special command format:
-- Yangi fayl yaratish: [CREATE_FILE: fayl_nomi.ext, /path/, language]
-- Yangi papka yaratish: [CREATE_FOLDER: papka_nomi, /path/]
+- Create file: [CREATE_FILE: file_name.ext, /path/, language]
+- Create folder: [CREATE_FOLDER: folder_name, /path/]
 
 If you provide code, wrap it in \`\`\`language ... \`\`\`.
 Keep responses concise, clear, and useful.
@@ -37,12 +37,12 @@ Current code context:
 ${code || "// No code yet"}
 \`\`\``;
 
-    // Try with rotating Google keys first, fallback to Lovable AI
-    let lastError = "";
+    // Try with rotating Google keys first
     const googleKeys = [
       Deno.env.get("GOOGLE_AI_KEY_1"),
       Deno.env.get("GOOGLE_AI_KEY_2"),
       Deno.env.get("GOOGLE_AI_KEY_3"),
+      Deno.env.get("GEMINI_API_KEY"),
     ].filter(Boolean) as string[];
 
     // Shuffle keys for rotation
@@ -79,11 +79,9 @@ ${code || "// No code yet"}
           });
         }
         
-        lastError = `Google API ${googleResponse.status}`;
         console.error(`Google key failed: ${googleResponse.status}`);
       } catch (e) {
-        lastError = e instanceof Error ? e.message : "Unknown error";
-        console.error("Google key error:", lastError);
+        console.error("Google key error:", e instanceof Error ? e.message : "Unknown error");
       }
     }
 
@@ -91,93 +89,66 @@ ${code || "// No code yet"}
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (LOVABLE_API_KEY) {
       console.log("Falling back to Lovable AI Gateway");
-      response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: prompt }
-          ],
-          temperature: 0.7,
-          max_tokens: 4096,
-          stream: false,
-        }),
-      });
 
       const models = [
         "google/gemini-2.5-flash",
         "google/gemini-2.5-flash-lite",
         "google/gemini-3-flash-preview",
       ];
-      let sawRateLimit = false;
 
       for (const model of models) {
-        const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model,
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: prompt }
-            ],
-            temperature: 0.7,
-            max_tokens: 4096,
-            stream: false,
-          }),
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          const assistantResponse = data.choices?.[0]?.message?.content || "Failed to get response";
-          return new Response(JSON.stringify({ response: assistantResponse }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+        try {
+          const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model,
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: prompt }
+              ],
+              temperature: 0.7,
+              max_tokens: 4096,
+              stream: false,
+            }),
           });
-        }
 
-        console.error(`Lovable AI model ${model} failed: ${response.status}`);
-        if (response.status === 429 || response.status === 402) {
-          sawRateLimit = true;
-          continue;
-        }
-      }
+          if (response.ok) {
+            const data = await response.json();
+            const assistantResponse = data.choices?.[0]?.message?.content || "Failed to get response";
+            return new Response(JSON.stringify({ response: assistantResponse }), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
 
-      if (sawRateLimit) {
-        throw new Error("RATE_LIMIT");
+          console.error(`Lovable AI model ${model} failed: ${response.status}`);
+          if (response.status !== 429 && response.status !== 402) {
+            break;
+          }
+        } catch (e) {
+          console.error(`Lovable AI model ${model} error:`, e);
+        }
       }
     }
 
     if (googleKeys.length === 0 && !LOVABLE_API_KEY) {
-      throw new Error("NO_AI_KEYS");
-    }
-    throw new Error(`All AI providers failed. Last error: ${lastError}`);
-  } catch (error) {
-    console.error("AI Assistant error:", error);
-
-    const message = error instanceof Error ? error.message : "Unknown error";
-    if (message === "RATE_LIMIT") {
       return new Response(
-        JSON.stringify({ error: "AI service is busy. Please try again in a moment." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    if (message === "NO_AI_KEYS") {
-      return new Response(
-        JSON.stringify({ error: "AI is not configured on the server. Add API keys in Supabase secrets." }),
+        JSON.stringify({ error: "AI is not configured. Add API keys." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     return new Response(
-      JSON.stringify({ error: message }),
+      JSON.stringify({ error: "All AI providers are currently busy. Please try again." }),
+      { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("AI Assistant error:", error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
