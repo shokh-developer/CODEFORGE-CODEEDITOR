@@ -45,45 +45,45 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-sm p-0 overflow-hidden rounded-xl border-border/60">
-        <div className="h-1 w-full bg-gradient-to-r from-primary/80 to-primary" />
+      <DialogContent className="max-w-sm p-0 overflow-hidden rounded-2xl glass-card border-primary/15">
+        <div className="h-1 w-full bg-gradient-to-r from-primary/60 via-primary to-primary/60" />
         <div className="p-6">
           <DialogHeader className="mb-6">
             <div className="flex items-center justify-center mb-4">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center glow-sm">
-                <Braces className="h-6 w-6 text-primary" />
+              <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center glow-md border border-primary/20">
+                <Braces className="h-7 w-7 text-primary" />
               </div>
             </div>
-            <DialogTitle className="text-center text-lg font-bold">
-              {mode === "login" ? "Welcome Back" : "Create Account"}
+            <DialogTitle className="text-center text-lg font-bold font-orbitron tracking-wide">
+              {mode === "login" ? "WELCOME BACK" : "CREATE ACCOUNT"}
             </DialogTitle>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-3">
             {mode === "register" && (
               <div className="relative">
-                <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Your name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="pl-9 h-10 text-sm bg-background/50" disabled={loading} />
+                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Your name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="pl-9 h-11 text-sm glow-input rounded-xl" disabled={loading} />
               </div>
             )}
             <div className="relative">
-              <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-9 h-10 text-sm bg-background/50" required disabled={loading} />
+              <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-9 h-11 text-sm glow-input rounded-xl" required disabled={loading} />
             </div>
             <div className="relative">
-              <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input type="password" placeholder="Password (min 6)" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-9 h-10 text-sm bg-background/50" required minLength={6} disabled={loading} />
+              <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input type="password" placeholder="Password (min 6)" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-9 h-11 text-sm glow-input rounded-xl" required minLength={6} disabled={loading} />
             </div>
-            <Button type="submit" className="w-full h-10 text-sm font-medium" disabled={loading}>
+            <button type="submit" className="btn-futuristic w-full h-11 text-sm font-bold flex items-center justify-center gap-2" disabled={loading}>
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : mode === "login" ? "Sign In" : "Sign Up"}
-            </Button>
+            </button>
           </form>
 
           <p className="text-center text-xs text-muted-foreground mt-5">
             {mode === "login" ? (
-              <>Don't have an account?{" "}<button type="button" onClick={() => { setMode("register"); resetForm(); }} className="text-primary hover:underline font-medium" disabled={loading}>Sign up</button></>
+              <>Don't have an account?{" "}<button type="button" onClick={() => { setMode("register"); resetForm(); }} className="text-primary hover:underline font-semibold" disabled={loading}>Sign up</button></>
             ) : (
-              <>Already have an account?{" "}<button type="button" onClick={() => { setMode("login"); resetForm(); }} className="text-primary hover:underline font-medium" disabled={loading}>Sign in</button></>
+              <>Already have an account?{" "}<button type="button" onClick={() => { setMode("login"); resetForm(); }} className="text-primary hover:underline font-semibold" disabled={loading}>Sign in</button></>
             )}
           </p>
         </div>
