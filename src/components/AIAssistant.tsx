@@ -676,8 +676,8 @@ Rules:
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
             className={`fixed z-50 bg-card border border-border rounded-2xl shadow-2xl shadow-primary/10 overflow-hidden flex flex-col ${
               isExpanded 
-                ? "bottom-4 right-4 left-4 top-4 md:bottom-10 md:right-10 md:left-auto md:top-10 md:w-[700px]" 
-                : "bottom-20 right-4 md:right-20 w-[95vw] md:w-[500px] max-h-[80vh]"
+                ? "bottom-4 right-4 left-4 top-4 md:bottom-6 md:right-6 md:left-auto md:top-6 md:w-[750px]" 
+                : "bottom-20 right-4 w-[95vw] md:w-[420px] lg:w-[480px] h-[70vh] md:h-[600px]"
             }`}
           >
             {/* Header */}
