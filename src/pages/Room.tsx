@@ -15,7 +15,7 @@ import AdminPanel from "@/components/AdminPanel";
 import AIAssistant from "@/components/AIAssistant";
 import LivePreview from "@/components/LivePreview";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, PanelLeftClose, PanelLeft, Menu, X } from "lucide-react";
+import { ArrowLeft, Loader2, PanelLeftClose, PanelLeft, Eye, EyeOff } from "lucide-react";
 import { useState, useCallback, useEffect } from "react";
 import { debounce } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
