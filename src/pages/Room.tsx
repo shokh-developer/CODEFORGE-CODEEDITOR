@@ -13,6 +13,7 @@ import Terminal from "@/components/Terminal";
 import RoomChat from "@/components/RoomChat";
 import AdminPanel from "@/components/AdminPanel";
 import AIAssistant from "@/components/AIAssistant";
+import LivePreview from "@/components/LivePreview";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2, PanelLeftClose, PanelLeft, Menu, X } from "lucide-react";
 import { useState, useCallback, useEffect } from "react";
