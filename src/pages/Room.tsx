@@ -250,7 +250,7 @@ const Room = () => {
         </div>
 
         {/* Editor area */}
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <div className={`flex-1 flex flex-col overflow-hidden min-w-0 ${previewOpen ? 'w-1/2' : ''}`}>
           <EditorTabs
             tabs={openTabFiles.map(f => ({ id: f.id, name: f.name, language: f.language }))}
             activeTabId={activeFile?.id || null} onTabSelect={handleTabSelect} onTabClose={handleTabClose}
@@ -265,6 +265,13 @@ const Room = () => {
           <Terminal isOpen={terminalOpen} onToggle={() => setTerminalOpen(!terminalOpen)} code={localContent} language={activeFile?.language || "javascript"} files={files} activeFile={activeFile} />
           <StatusBar language={activeFile?.language || "plaintext"} fileName={activeFile?.name} />
         </div>
+
+        {/* Live Preview */}
+        {previewOpen && (
+          <div className="w-1/2 h-full">
+            <LivePreview files={files} activeFile={activeFile} isOpen={previewOpen} onToggle={() => setPreviewOpen(false)} />
+          </div>
+        )}
       </div>
 
       <RoomChat roomId={id || ""} />
