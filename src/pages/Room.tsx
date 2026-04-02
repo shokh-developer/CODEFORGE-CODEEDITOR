@@ -13,8 +13,9 @@ import Terminal from "@/components/Terminal";
 import RoomChat from "@/components/RoomChat";
 import AdminPanel from "@/components/AdminPanel";
 import AIAssistant from "@/components/AIAssistant";
+import LivePreview from "@/components/LivePreview";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, PanelLeftClose, PanelLeft, Menu, X } from "lucide-react";
+import { ArrowLeft, Loader2, PanelLeftClose, PanelLeft, Eye, EyeOff } from "lucide-react";
 import { useState, useCallback, useEffect } from "react";
 import { debounce } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -39,6 +40,7 @@ const Room = () => {
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
   const [terminalOpen, setTerminalOpen] = useState(true);
   const [localContent, setLocalContent] = useState("");
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   // Close sidebar on mobile when file selected
   useEffect(() => {
@@ -217,6 +219,14 @@ const Room = () => {
             }}
           />
         </div>
+        {/* Preview toggle */}
+        <button
+          onClick={() => setPreviewOpen(!previewOpen)}
+          className={`h-10 w-10 flex items-center justify-center hover:bg-secondary transition-colors duration-150 border-l border-border ${previewOpen ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
+          title={previewOpen ? "Close preview" : "Live preview"}
+        >
+          {previewOpen ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </button>
       </div>
 
       {/* Main content */}
@@ -240,7 +250,7 @@ const Room = () => {
         </div>
 
         {/* Editor area */}
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <div className={`flex-1 flex flex-col overflow-hidden min-w-0 ${previewOpen ? 'w-1/2' : ''}`}>
           <EditorTabs
             tabs={openTabFiles.map(f => ({ id: f.id, name: f.name, language: f.language }))}
             activeTabId={activeFile?.id || null} onTabSelect={handleTabSelect} onTabClose={handleTabClose}
@@ -255,6 +265,13 @@ const Room = () => {
           <Terminal isOpen={terminalOpen} onToggle={() => setTerminalOpen(!terminalOpen)} code={localContent} language={activeFile?.language || "javascript"} files={files} activeFile={activeFile} />
           <StatusBar language={activeFile?.language || "plaintext"} fileName={activeFile?.name} />
         </div>
+
+        {/* Live Preview */}
+        {previewOpen && (
+          <div className="w-1/2 h-full">
+            <LivePreview files={files} activeFile={activeFile} isOpen={previewOpen} onToggle={() => setPreviewOpen(false)} />
+          </div>
+        )}
       </div>
 
       <RoomChat roomId={id || ""} />
