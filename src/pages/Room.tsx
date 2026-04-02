@@ -40,6 +40,7 @@ const Room = () => {
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
   const [terminalOpen, setTerminalOpen] = useState(true);
   const [localContent, setLocalContent] = useState("");
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   // Close sidebar on mobile when file selected
   useEffect(() => {
