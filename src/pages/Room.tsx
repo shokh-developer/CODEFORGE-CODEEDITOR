@@ -219,6 +219,14 @@ const Room = () => {
             }}
           />
         </div>
+        {/* Preview toggle */}
+        <button
+          onClick={() => setPreviewOpen(!previewOpen)}
+          className={`h-10 w-10 flex items-center justify-center hover:bg-secondary transition-colors duration-150 border-l border-border ${previewOpen ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
+          title={previewOpen ? "Close preview" : "Live preview"}
+        >
+          {previewOpen ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </button>
       </div>
 
       {/* Main content */}
