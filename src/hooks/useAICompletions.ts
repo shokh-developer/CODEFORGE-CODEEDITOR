@@ -1,9 +1,24 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useDebounce } from "@/hooks/use-debounce";
 
-// ==================== TYPES & INTERFACES ====================
+// ==================== TYPES ====================
+
+interface FileStructure {
+  name: string;
+  path: string;
+  content: string;
+  language: "html" | "css" | "typescript" | "javascript" | "tsx" | "jsx" | "json";
+  is_entry?: boolean;
+}
+
+interface ProjectStructure {
+  name: string;
+  description: string;
+  files: FileStructure[];
+  dependencies?: Record<string, string>;
+  scripts?: Record<string, string>;
+}
 
 interface CursorPosition {
   line: number;
@@ -17,534 +32,658 @@ interface FileItem {
   content: string;
   language: string;
   is_folder: boolean;
-  size?: number;
-}
-
-interface CompletionResult {
-  completion: string;
-  type: "inline" | "block" | "line";
-  confidence: number;
-  metadata?: {
-    model: string;
-    tokens: number;
-    latency: number;
-  };
-}
-
-interface CompletionContext {
-  prefix: string;
-  suffix: string;
-  currentLine: string;
-  indentation: string;
-  languageFeatures: string[];
-  recentEdits: { line: number; content: string; timestamp: number }[];
-}
-
-interface AICompletionOptions {
-  maxTokens?: number;
-  temperature?: number;
-  includeSuffix?: boolean;
-  streaming?: boolean;
-  timeout?: number;
-}
-
-interface CompletionCacheEntry {
-  result: string;
-  timestamp: number;
-  contextHash: string;
 }
 
 // ==================== CONSTANTS ====================
 
-const COMPLETION_CACHE_DURATION = 30000; // 30 seconds
-const RATE_LIMIT_WINDOW = 60000; // 1 minute
-const MAX_REQUESTS_PER_WINDOW = 10;
-const DEBOUNCE_DELAY = 300;
-const MAX_CACHE_SIZE = 100;
+const PROJECT_TEMPLATES = {
+  react: {
+    name: "React App",
+    files: [
+      {
+        name: "index.html",
+        path: "/",
+        content: `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>React App</title>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>`,
+        language: "html" as const
+      },
+      {
+        name: "main.tsx",
+        path: "/src/",
+        content: `import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App'
+import './index.css'
 
-const LANGUAGE_PATTERNS: Record<string, {
-  keywords: string[];
-  triggers: string[];
-  indentation: string;
-}> = {
-  typescript: {
-    keywords: ["function", "const", "let", "class", "interface", "type", "enum", "return", "if", "else", "for", "while", "try", "catch", "export", "import", "from"],
-    triggers: [".", "=>", "(", "{", "[", " ", "\n"],
-    indentation: "  ",
-  },
-  python: {
-    keywords: ["def", "class", "import", "from", "return", "if", "elif", "else", "for", "while", "try", "except", "with", "as"],
-    triggers: [".", ":", " ", "\n"],
-    indentation: "    ",
-  },
-  javascript: {
-    keywords: ["function", "const", "let", "class", "return", "if", "else", "for", "while", "try", "catch", "export", "import", "from"],
-    triggers: [".", "=>", "(", "{", "[", " ", "\n"],
-    indentation: "  ",
-  },
-  html: {
-    keywords: ["div", "span", "class", "id", "style", "onclick", "href", "src", "alt"],
-    triggers: ["<", "</", " ", "=", ">"],
-    indentation: "  ",
-  },
-  css: {
-    keywords: ["display", "position", "color", "background", "margin", "padding", "border", "width", "height", "flex", "grid"],
-    triggers: [":", ";", "{", "}", " ", "\n"],
-    indentation: "  ",
-  },
-};
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+)`,
+        language: "tsx" as const
+      },
+      {
+        name: "App.tsx",
+        path: "/src/",
+        content: `import React, { useState } from 'react'
+import './App.css'
 
-// ==================== UTILITY FUNCTIONS ====================
+function App() {
+  const [count, setCount] = useState(0)
 
-const generateContextHash = (code: string, cursorPosition: CursorPosition): string => {
-  const relevantCode = code.substring(
-    Math.max(0, cursorPosition.line * 100 - 500),
-    cursorPosition.line * 100 + 200
-  );
-  return `${relevantCode}:${cursorPosition.line}:${cursorPosition.column}`;
-};
+  return (
+    <div className="app">
+      <h1>Welcome to React</h1>
+      <button onClick={() => setCount(count + 1)}>
+        Count: {count}
+      </button>
+    </div>
+  )
+}
 
-const extractContext = (code: string, cursorPosition: CursorPosition): CompletionContext => {
-  const lines = code.split("\n");
-  const currentLine = lines[cursorPosition.line] || "";
-  const prefix = currentLine.substring(0, cursorPosition.column);
-  const suffix = currentLine.substring(cursorPosition.column);
-  
-  // Calculate indentation
-  const indentationMatch = prefix.match(/^\s*/);
-  const indentation = indentationMatch ? indentationMatch[0] : "";
-  
-  // Detect language features from context
-  const languageFeatures: string[] = [];
-  if (prefix.includes("function") || prefix.includes("=>")) languageFeatures.push("function");
-  if (prefix.includes("class")) languageFeatures.push("class");
-  if (prefix.includes("import") || prefix.includes("require")) languageFeatures.push("import");
-  if (prefix.includes("return")) languageFeatures.push("return");
-  
-  return {
-    prefix,
-    suffix,
-    currentLine,
-    indentation,
-    languageFeatures,
-    recentEdits: [],
-  };
-};
+export default App`,
+        language: "tsx" as const
+      },
+      {
+        name: "index.css",
+        path: "/src/",
+        content: `* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
-const detectLanguageFromCode = (code: string, language: string): string => {
-  if (language && LANGUAGE_PATTERNS[language.toLowerCase()]) {
-    return language.toLowerCase();
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+}`,
+        language: "css" as const
+      },
+      {
+        name: "App.css",
+        path: "/src/",
+        content: `.app {
+  text-align: center;
+  padding: 2rem;
+}
+
+h1 {
+  color: white;
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+button {
+  background: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+button:hover {
+  transform: scale(1.05);
+}`,
+        language: "css" as const
+      },
+      {
+        name: "package.json",
+        path: "/",
+        content: `{
+  "name": "react-app",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^4.0.0"
   }
-  
-  // Auto-detect from code
-  if (code.includes("function") && code.includes("const")) return "typescript";
-  if (code.includes("def ") && code.includes(":")) return "python";
-  if (code.includes("<div") && code.includes("</div>")) return "html";
-  if (code.includes("{") && code.includes("}") && code.includes(":")) return "css";
-  
-  return "typescript";
-};
+}`,
+        language: "json" as const
+      },
+      {
+        name: "tsconfig.json",
+        path: "/",
+        content: `{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src"],
+  "references": [{ "path": "./tsconfig.node.json" }]
+}`,
+        language: "json" as const
+      },
+      {
+        name: "vite.config.ts",
+        path: "/",
+        content: `import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
 
-const postProcessCompletion = (completion: string, context: CompletionContext): string => {
-  let processed = completion;
-  
-  // Remove duplicate indentation
-  if (context.indentation && processed.startsWith(context.indentation)) {
-    processed = processed.substring(context.indentation.length);
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    port: 3000,
+    open: true
   }
-  
-  // Fix common issues
-  processed = processed.replace(/\s+$/g, ""); // Remove trailing spaces
-  processed = processed.replace(/^\n+/, ""); // Remove leading newlines
-  
-  // Ensure proper line endings
-  if (context.prefix && !context.prefix.endsWith(" ") && processed.startsWith(" ")) {
-    processed = processed.trimStart();
+})`,
+        language: "typescript" as const
+      }
+    ]
+  },
+  vue: {
+    name: "Vue.js App",
+    files: [
+      {
+        name: "index.html",
+        path: "/",
+        content: `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vue App</title>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>`,
+        language: "html" as const
+      },
+      {
+        name: "main.ts",
+        path: "/src/",
+        content: `import { createApp } from 'vue'
+import App from './App.vue'
+import './style.css'
+
+createApp(App).mount('#app')`,
+        language: "typescript" as const
+      },
+      {
+        name: "App.vue",
+        path: "/src/",
+        content: `<template>
+  <div class="app">
+    <h1>Welcome to Vue.js</h1>
+    <button @click="count++">
+      Count: {{ count }}
+    </button>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const count = ref(0)
+</script>
+
+<style scoped>
+.app {
+  text-align: center;
+  padding: 2rem;
+}
+
+h1 {
+  color: #42b883;
+  font-size: 2.5rem;
+}
+
+button {
+  background: #42b883;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+</style>`,
+        language: "tsx" as const
+      },
+      {
+        name: "style.css",
+        path: "/src/",
+        content: `* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+}`,
+        language: "css" as const
+      }
+    ]
+  },
+  "full-stack": {
+    name: "Full Stack App (Express + React)",
+    files: [
+      {
+        name: "server.js",
+        path: "/backend/",
+        content: `const express = require('express');
+const cors = require('cors');
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+app.use(cors());
+app.use(express.json());
+
+// API Routes
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'OK', timestamp: new Date() });
+});
+
+app.get('/api/users', (req, res) => {
+  res.json([
+    { id: 1, name: 'John Doe', email: 'john@example.com' },
+    { id: 2, name: 'Jane Smith', email: 'jane@example.com' }
+  ]);
+});
+
+app.listen(PORT, () => {
+  console.log(\`Server running on port \${PORT}\`);
+});`,
+        language: "javascript" as const
+      },
+      {
+        name: "package.json",
+        path: "/backend/",
+        content: `{
+  "name": "backend",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
   }
+}`,
+        language: "json" as const
+      },
+      {
+        name: "api.ts",
+        path: "/frontend/src/services/",
+        content: `const API_URL = 'http://localhost:5000/api';
+
+export interface User {
+  id: number;
+  name: string;
+  email: string;
+}
+
+export const api = {
+  async getUsers(): Promise<User[]> {
+    const response = await fetch(\`\${API_URL}/users\`);
+    return response.json();
+  },
   
-  // Add semicolon for JavaScript/TypeScript if needed
-  const language = context.languageFeatures.includes("import") ? "typescript" : "javascript";
-  if (["javascript", "typescript"].includes(language) && 
-      !processed.includes(";") && 
-      processed.length < 50) {
-    processed += ";";
+  async checkHealth(): Promise<{ status: string }> {
+    const response = await fetch(\`\${API_URL}/health\`);
+    return response.json();
   }
-  
-  return processed;
+};`,
+        language: "typescript" as const
+      }
+    ]
+  }
 };
 
 // ==================== MAIN HOOK ====================
 
 export const useAICompletions = () => {
-  // State
   const [isLoading, setIsLoading] = useState(false);
-  const [isStreaming, setIsStreaming] = useState(false);
   const [currentSuggestion, setCurrentSuggestion] = useState<string | null>(null);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
-  const [confidence, setConfidence] = useState(0);
-  const [lastCompletionTime, setLastCompletionTime] = useState<number>(0);
-  
-  // Refs
   const abortControllerRef = useRef<AbortController | null>(null);
-  const rateLimitCountRef = useRef<number>(0);
-  const rateLimitResetRef = useRef<number>(Date.now());
-  const completionCacheRef = useRef<Map<string, CompletionCacheEntry>>(new Map());
-  const requestQueueRef = useRef<Array<() => Promise<void>>>([]);
-  const isProcessingQueueRef = useRef(false);
-  
-  // Hooks
+  const rateLimitCooldownRef = useRef<number>(0);
   const { toast } = useToast();
 
-  // Clean up old cache entries periodically
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const now = Date.now();
-      for (const [key, entry] of completionCacheRef.current.entries()) {
-        if (now - entry.timestamp > COMPLETION_CACHE_DURATION) {
-          completionCacheRef.current.delete(key);
-        }
-      }
-    }, 60000);
-    
-    return () => clearInterval(interval);
-  }, []);
-
-  // Process request queue
-  const processQueue = useCallback(async () => {
-    if (isProcessingQueueRef.current) return;
-    isProcessingQueueRef.current = true;
-    
-    while (requestQueueRef.current.length > 0) {
-      const request = requestQueueRef.current.shift();
-      if (request) {
-        await request();
-      }
-    }
-    
-    isProcessingQueueRef.current = false;
-  }, []);
-
-  // Check rate limit
-  const checkRateLimit = useCallback((): boolean => {
-    const now = Date.now();
-    if (now - rateLimitResetRef.current > RATE_LIMIT_WINDOW) {
-      rateLimitCountRef.current = 0;
-      rateLimitResetRef.current = now;
-    }
-    
-    if (rateLimitCountRef.current >= MAX_REQUESTS_PER_WINDOW) {
-      const waitTime = rateLimitResetRef.current + RATE_LIMIT_WINDOW - now;
-      toast({
-        title: "Rate Limit Reached",
-        description: `Please wait ${Math.ceil(waitTime / 1000)} seconds before making more requests`,
-        variant: "destructive",
-      });
-      return false;
-    }
-    
-    rateLimitCountRef.current++;
-    return true;
-  }, [toast]);
-
-  // Get cached completion
-  const getCachedCompletion = useCallback((code: string, cursorPosition: CursorPosition): string | null => {
-    const contextHash = generateContextHash(code, cursorPosition);
-    const cached = completionCacheRef.current.get(contextHash);
-    
-    if (cached && Date.now() - cached.timestamp < COMPLETION_CACHE_DURATION) {
-      return cached.result;
-    }
-    
-    return null;
-  }, []);
-
-  // Cache completion
-  const cacheCompletion = useCallback((code: string, cursorPosition: CursorPosition, result: string) => {
-    const contextHash = generateContextHash(code, cursorPosition);
-    
-    // Limit cache size
-    if (completionCacheRef.current.size >= MAX_CACHE_SIZE) {
-      const oldestKey = completionCacheRef.current.keys().next().value;
-      completionCacheRef.current.delete(oldestKey);
-    }
-    
-    completionCacheRef.current.set(contextHash, {
-      result,
-      timestamp: Date.now(),
-      contextHash,
-    });
-  }, []);
-
-  // Core completion function
-  const getInlineCompletion = useCallback(
+  // ==================== PROJECT GENERATION ====================
+  
+  const generateFullProject = useCallback(
     async (
-      code: string,
-      language: string,
-      cursorPosition: CursorPosition,
-      files?: FileItem[],
-      options: AICompletionOptions = {}
-    ): Promise<CompletionResult | null> => {
-      // Check cache first
-      const cachedResult = getCachedCompletion(code, cursorPosition);
-      if (cachedResult) {
-        setCurrentSuggestion(cachedResult);
-        setConfidence(0.9);
-        return {
-          completion: cachedResult,
-          type: "inline",
-          confidence: 0.9,
-        };
-      }
-      
-      // Cancel previous request
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-      abortControllerRef.current = new AbortController();
-      
-      // Check rate limit
-      if (!checkRateLimit()) {
-        return null;
-      }
-      
-      // Set timeout
-      const timeout = options.timeout || 5000;
-      const timeoutId = setTimeout(() => {
-        if (abortControllerRef.current) {
-          abortControllerRef.current.abort();
-        }
-      }, timeout);
-      
-      setIsLoading(true);
-      setCurrentSuggestion(null);
-      
-      const startTime = Date.now();
-      const detectedLanguage = detectLanguageFromCode(code, language);
-      const context = extractContext(code, cursorPosition);
-      
-      try {
-        const { data, error } = await supabase.functions.invoke("ai-completions", {
-          body: {
-            code,
-            language: detectedLanguage,
-            cursorPosition,
-            projectContext: files ? { files: files.slice(0, 20) } : null,
-            type: "inline",
-            context: {
-              prefix: context.prefix,
-              suffix: context.suffix,
-              indentation: context.indentation,
-              languageFeatures: context.languageFeatures,
-            },
-            maxTokens: options.maxTokens || 150,
-            temperature: options.temperature || 0.2,
-            includeSuffix: options.includeSuffix || false,
-            streaming: options.streaming || false,
-          },
-          signal: abortControllerRef.current.signal,
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (error) {
-          console.error("Completion error:", error);
-          return null;
-        }
-        
-        if (data?.error) {
-          console.error("Completion error:", data.error);
-          return null;
-        }
-        
-        const rawCompletion = data?.completion || data?.suggestion || null;
-        const completionType = data?.type || "inline";
-        const confidenceScore = data?.confidence || 0.7;
-        
-        if (rawCompletion) {
-          const processedCompletion = postProcessCompletion(rawCompletion, context);
-          setCurrentSuggestion(processedCompletion);
-          setConfidence(confidenceScore);
-          setLastCompletionTime(Date.now() - startTime);
-          
-          // Cache the result
-          cacheCompletion(code, cursorPosition, processedCompletion);
-          
-          const result: CompletionResult = {
-            completion: processedCompletion,
-            type: completionType,
-            confidence: confidenceScore,
-            metadata: {
-              model: data?.model || "gpt-4",
-              tokens: data?.tokens || 0,
-              latency: Date.now() - startTime,
-            },
-          };
-          
-          return result;
-        }
-        
-        return null;
-      } catch (error: any) {
-        clearTimeout(timeoutId);
-        if (error.name !== "AbortError") {
-          console.error("Completion request failed:", error);
-        }
-        return null;
-      } finally {
-        setIsLoading(false);
-        abortControllerRef.current = null;
-      }
-    },
-    [checkRateLimit, getCachedCompletion, cacheCompletion]
-  );
-
-  // Get multiple suggestions
-  const getMultipleSuggestions = useCallback(
-    async (
-      code: string,
-      language: string,
-      cursorPosition: CursorPosition,
-      count: number = 3,
-      files?: FileItem[]
-    ): Promise<string[]> => {
-      if (!checkRateLimit()) return [];
-      
+      description: string,
+      template: "react" | "vue" | "full-stack" | "custom" = "react"
+    ): Promise<ProjectStructure | null> => {
       setIsLoading(true);
       
       try {
-        const { data, error } = await supabase.functions.invoke("ai-completions", {
+        // First, try to use predefined templates
+        if (template !== "custom" && PROJECT_TEMPLATES[template]) {
+          toast({
+            title: "Project Generated!",
+            description: `${PROJECT_TEMPLATES[template].name} template created`,
+          });
+          return PROJECT_TEMPLATES[template];
+        }
+        
+        // For custom projects, use AI to generate structure
+        const { data, error } = await supabase.functions.invoke("ai-assistant", {
           body: {
-            code,
-            language: detectLanguageFromCode(code, language),
-            cursorPosition,
-            projectContext: files ? { files: files.slice(0, 20) } : null,
-            type: "multiple",
-            count,
-            temperature: 0.8, // Higher temperature for diversity
+            prompt: `Create a complete web development project based on: "${description}"
+            
+Return a JSON object with this exact structure:
+{
+  "name": "project-name",
+  "description": "project description",
+  "files": [
+    {
+      "name": "filename.tsx",
+      "path": "/src/",
+      "content": "full file content",
+      "language": "tsx"
+    }
+  ],
+  "dependencies": {},
+  "scripts": {}
+}
+
+Create ALL necessary files for a complete web application including:
+- HTML entry point
+- Main app component
+- CSS/styling files
+- Configuration files (package.json, tsconfig.json, vite.config.js)
+- Multiple components if needed
+- API services if backend is needed
+- Types/interfaces
+- Utility functions
+
+Generate REAL, WORKING code. Make it professional and production-ready.`,
+            mode: "generate-project-structure",
+            template,
           },
         });
         
         if (error) throw error;
         
-        const suggestionsList = data?.suggestions || [];
-        setSuggestions(suggestionsList);
-        setActiveSuggestionIndex(0);
-        if (suggestionsList.length > 0) {
-          setCurrentSuggestion(suggestionsList[0]);
+        let projectData: ProjectStructure;
+        
+        // Parse AI response
+        const responseText = data?.response || data?.completion || "";
+        const jsonMatch = responseText.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
+        
+        if (jsonMatch) {
+          projectData = JSON.parse(jsonMatch[1]);
+        } else {
+          projectData = JSON.parse(responseText);
         }
         
-        return suggestionsList;
-      } catch (error) {
-        console.error("Multiple suggestions error:", error);
+        // Validate and ensure required files exist
+        if (!projectData.files.some(f => f.name === "index.html")) {
+          projectData.files.push(PROJECT_TEMPLATES.react.files[0]); // Add default index.html
+        }
+        
+        if (!projectData.files.some(f => f.name.includes("App"))) {
+          projectData.files.push(PROJECT_TEMPLATES.react.files[2]); // Add default App
+        }
+        
+        toast({
+          title: "Project Generated!",
+          description: `${projectData.files.length} files created successfully`,
+        });
+        
+        return projectData;
+      } catch (error: any) {
+        console.error("Project generation error:", error);
+        toast({
+          title: "Generation Failed",
+          description: error.message || "Failed to generate project",
+          variant: "destructive",
+        });
+        return null;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [toast]
+  );
+
+  // ==================== COMPONENT GENERATION ====================
+  
+  const generateComponent = useCallback(
+    async (
+      name: string,
+      type: "react" | "vue" | "web-component" = "react",
+      props?: Record<string, string>
+    ): Promise<FileStructure | null> => {
+      setIsLoading(true);
+      
+      try {
+        const { data, error } = await supabase.functions.invoke("ai-assistant", {
+          body: {
+            prompt: `Create a ${type} component named "${name}"${props ? ` with props: ${JSON.stringify(props)}` : ""}.
+            
+Return ONLY the file content, no explanations.
+Make it modern, responsive, and include TypeScript types.
+Add comments for complex logic.
+Include styles (CSS-in-JS or separate based on best practices).
+Make it reusable and production-ready.`,
+            type: "generate-component",
+            componentName: name,
+            componentType: type,
+          },
+        });
+        
+        if (error) throw error;
+        
+        const content = data?.completion || data?.response || "";
+        
+        const fileExtension = type === "react" ? "tsx" : type === "vue" ? "vue" : "js";
+        const filePath = `/src/components/${name}/`;
+        
+        const componentFile: FileStructure = {
+          name: `${name}.${fileExtension}`,
+          path: filePath,
+          content,
+          language: fileExtension as any,
+        };
+        
+        toast({
+          title: "Component Generated",
+          description: `${name} component created`,
+        });
+        
+        return componentFile;
+      } catch (error: any) {
+        console.error("Component generation error:", error);
+        toast({
+          title: "Generation Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        return null;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [toast]
+  );
+
+  // ==================== MULTI-FILE GENERATION ====================
+  
+  const generateMultipleFiles = useCallback(
+    async (
+      description: string,
+      count: number = 5
+    ): Promise<FileStructure[]> => {
+      setIsLoading(true);
+      
+      try {
+        const { data, error } = await supabase.functions.invoke("ai-assistant", {
+          body: {
+            prompt: `Generate ${count} web development files based on: "${description}"
+
+Return a JSON array of files:
+[
+  {
+    "name": "filename.tsx",
+    "path": "/src/",
+    "content": "full file content",
+    "language": "tsx"
+  }
+]
+
+Generate REAL, WORKING code for each file.
+Include different file types (components, services, types, styles, utils).
+Make them work together as a cohesive system.`,
+            mode: "generate-multiple-files",
+            fileCount: count,
+          },
+        });
+        
+        if (error) throw error;
+        
+        let files: FileStructure[] = [];
+        const responseText = data?.response || data?.completion || "";
+        const jsonMatch = responseText.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
+        
+        if (jsonMatch) {
+          files = JSON.parse(jsonMatch[1]);
+        } else {
+          files = JSON.parse(responseText);
+        }
+        
+        toast({
+          title: "Files Generated",
+          description: `${files.length} files created`,
+        });
+        
+        return files;
+      } catch (error: any) {
+        console.error("Multi-file generation error:", error);
+        toast({
+          title: "Generation Failed",
+          description: error.message,
+          variant: "destructive",
+        });
         return [];
       } finally {
         setIsLoading(false);
       }
     },
-    [checkRateLimit]
+    [toast]
   );
 
-  // Cycle through suggestions
-  const nextSuggestion = useCallback(() => {
-    if (suggestions.length === 0) return;
-    const nextIndex = (activeSuggestionIndex + 1) % suggestions.length;
-    setActiveSuggestionIndex(nextIndex);
-    setCurrentSuggestion(suggestions[nextIndex]);
-  }, [suggestions, activeSuggestionIndex]);
-
-  const previousSuggestion = useCallback(() => {
-    if (suggestions.length === 0) return;
-    const prevIndex = (activeSuggestionIndex - 1 + suggestions.length) % suggestions.length;
-    setActiveSuggestionIndex(prevIndex);
-    setCurrentSuggestion(suggestions[prevIndex]);
-  }, [suggestions, activeSuggestionIndex]);
-
-  // Smart completion based on context
-  const getSmartCompletion = useCallback(
+  // ==================== CODE COMPLETION ====================
+  
+  const getInlineCompletion = useCallback(
     async (
       code: string,
       language: string,
       cursorPosition: CursorPosition,
       files?: FileItem[]
     ): Promise<string | null> => {
-      const context = extractContext(code, cursorPosition);
-      const pattern = LANGUAGE_PATTERNS[detectLanguageFromCode(code, language)];
-      
-      // Check for common patterns
-      if (context.prefix.endsWith(".")) {
-        // Property access - suggest properties
-        const objName = context.prefix.match(/(\w+)\.$/)?.[1];
-        if (objName) {
-          // Try to find object type from project files
-          const relevantFile = files?.find(f => 
-            f.content.includes(objName) && 
-            (f.content.includes("class") || f.content.includes("interface"))
-          );
-          
-          if (relevantFile) {
-            const properties = relevantFile.content.match(/(\w+)\s*[:=]/g);
-            if (properties && properties.length > 0) {
-              const suggestion = properties[0].replace(/[:=]/, "");
-              return suggestion;
-            }
-          }
-        }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
-      
-      if (context.prefix.endsWith("(")) {
-        // Function call - suggest parameters
-        const funcName = context.prefix.match(/(\w+)\($/)?.[1];
-        if (funcName) {
-          // Suggest based on function name
-          return "params";
-        }
-      }
-      
-      // Fall back to AI completion
-      const result = await getInlineCompletion(code, language, cursorPosition, files);
-      return result?.completion || null;
-    },
-    [getInlineCompletion]
-  );
+      abortControllerRef.current = new AbortController();
 
-  // Code explanation with line highlighting
-  const explainCode = useCallback(
-    async (code: string, language: string, lineRange?: { start: number; end: number }): Promise<string | null> => {
-      if (!checkRateLimit()) return null;
-      
+      if (Date.now() < rateLimitCooldownRef.current) {
+        return null;
+      }
+
       setIsLoading(true);
+      setCurrentSuggestion(null);
+
       try {
-        const selectedCode = lineRange 
-          ? code.split("\n").slice(lineRange.start - 1, lineRange.end).join("\n")
-          : code;
-        
         const { data, error } = await supabase.functions.invoke("ai-completions", {
           body: {
-            code: selectedCode,
-            language: detectLanguageFromCode(code, language),
-            type: "explain",
-            lineRange,
-            detailed: true,
+            code,
+            language,
+            cursorPosition,
+            projectContext: files ? { files: files.slice(0, 20) } : null,
+            type: "inline",
           },
         });
-        
-        if (error) throw error;
-        
-        const explanation = data?.completion || data?.explanation || null;
-        
-        toast({
-          title: "Code Explanation",
-          description: "Explanation generated successfully",
-          variant: "default",
+
+        if (error) {
+          rateLimitCooldownRef.current = Date.now() + 60000;
+          return null;
+        }
+
+        if (data?.error) {
+          rateLimitCooldownRef.current = Date.now() + 60000;
+          return null;
+        }
+
+        const suggestion = data?.completion || null;
+        setCurrentSuggestion(suggestion);
+        return suggestion;
+      } catch (error: any) {
+        rateLimitCooldownRef.current = Date.now() + 60000;
+        return null;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
+  // ==================== CODE ANALYSIS ====================
+  
+  const explainCode = useCallback(
+    async (code: string, language: string): Promise<string | null> => {
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("ai-completions", {
+          body: { code, language, type: "explain" },
         });
-        
-        return explanation;
+
+        if (error) throw error;
+        return data?.completion || null;
       } catch (error) {
         console.error("Explain code error:", error);
         toast({
-          title: "Error",
-          description: "Failed to explain code",
+          title: "Xatolik",
+          description: "Kodni tushuntirishda xatolik",
           variant: "destructive",
         });
         return null;
@@ -552,49 +691,24 @@ export const useAICompletions = () => {
         setIsLoading(false);
       }
     },
-    [checkRateLimit, toast]
+    [toast]
   );
 
-  // Advanced code fixing with error analysis
   const fixCode = useCallback(
-    async (
-      code: string, 
-      language: string, 
-      errors?: { line: number; message: string }[]
-    ): Promise<{ fixedCode: string; changes: string[] } | null> => {
-      if (!checkRateLimit()) return null;
-      
+    async (code: string, language: string): Promise<string | null> => {
       setIsLoading(true);
       try {
         const { data, error } = await supabase.functions.invoke("ai-completions", {
-          body: {
-            code,
-            language: detectLanguageFromCode(code, language),
-            type: "fix",
-            errors,
-            includeExplanation: true,
-          },
+          body: { code, language, type: "fix" },
         });
-        
+
         if (error) throw error;
-        
-        const result = {
-          fixedCode: data?.completion || code,
-          changes: data?.changes || [],
-        };
-        
-        toast({
-          title: "Code Fixed",
-          description: `${result.changes.length} issues resolved`,
-          variant: "default",
-        });
-        
-        return result;
+        return data?.completion || null;
       } catch (error) {
         console.error("Fix code error:", error);
         toast({
-          title: "Error",
-          description: "Failed to fix code",
+          title: "Xatolik",
+          description: "Kodni to'g'irlashda xatolik",
           variant: "destructive",
         });
         return null;
@@ -602,49 +716,24 @@ export const useAICompletions = () => {
         setIsLoading(false);
       }
     },
-    [checkRateLimit, toast]
+    [toast]
   );
 
-  // Generate comprehensive tests
   const generateTests = useCallback(
-    async (
-      code: string, 
-      language: string,
-      framework: "jest" | "mocha" | "pytest" | "vitest" = "jest"
-    ): Promise<{ testCode: string; coverage: number } | null> => {
-      if (!checkRateLimit()) return null;
-      
+    async (code: string, language: string): Promise<string | null> => {
       setIsLoading(true);
       try {
         const { data, error } = await supabase.functions.invoke("ai-completions", {
-          body: {
-            code,
-            language: detectLanguageFromCode(code, language),
-            type: "tests",
-            framework,
-            generateEdgeCases: true,
-          },
+          body: { code, language, type: "tests" },
         });
-        
+
         if (error) throw error;
-        
-        const result = {
-          testCode: data?.completion || "",
-          coverage: data?.coverage || 70,
-        };
-        
-        toast({
-          title: "Tests Generated",
-          description: `${result.coverage}% estimated coverage`,
-          variant: "default",
-        });
-        
-        return result;
+        return data?.completion || null;
       } catch (error) {
         console.error("Generate tests error:", error);
         toast({
-          title: "Error",
-          description: "Failed to generate tests",
+          title: "Xatolik",
+          description: "Test yaratishda xatolik",
           variant: "destructive",
         });
         return null;
@@ -652,50 +741,24 @@ export const useAICompletions = () => {
         setIsLoading(false);
       }
     },
-    [checkRateLimit, toast]
+    [toast]
   );
 
-  // Smart refactoring with suggestions
   const refactorCode = useCallback(
-    async (
-      code: string, 
-      language: string,
-      patterns?: string[]
-    ): Promise<{ refactoredCode: string; suggestions: string[]; improvements: string[] } | null> => {
-      if (!checkRateLimit()) return null;
-      
+    async (code: string, language: string): Promise<string | null> => {
       setIsLoading(true);
       try {
         const { data, error } = await supabase.functions.invoke("ai-completions", {
-          body: {
-            code,
-            language: detectLanguageFromCode(code, language),
-            type: "refactor",
-            patterns,
-            suggestions: true,
-          },
+          body: { code, language, type: "refactor" },
         });
-        
+
         if (error) throw error;
-        
-        const result = {
-          refactoredCode: data?.completion || code,
-          suggestions: data?.suggestions || [],
-          improvements: data?.improvements || [],
-        };
-        
-        toast({
-          title: "Refactoring Complete",
-          description: `${result.suggestions.length} improvements suggested`,
-          variant: "default",
-        });
-        
-        return result;
+        return data?.completion || null;
       } catch (error) {
         console.error("Refactor code error:", error);
         toast({
-          title: "Error",
-          description: "Failed to refactor code",
+          title: "Xatolik",
+          description: "Kodni refaktor qilishda xatolik",
           variant: "destructive",
         });
         return null;
@@ -703,46 +766,24 @@ export const useAICompletions = () => {
         setIsLoading(false);
       }
     },
-    [checkRateLimit, toast]
+    [toast]
   );
 
-  // Generate documentation
   const generateDocs = useCallback(
-    async (
-      code: string, 
-      language: string,
-      format: "jsdoc" | "typedoc" | "sphinx" | "markdown" = "markdown"
-    ): Promise<string | null> => {
-      if (!checkRateLimit()) return null;
-      
+    async (code: string, language: string): Promise<string | null> => {
       setIsLoading(true);
       try {
         const { data, error } = await supabase.functions.invoke("ai-completions", {
-          body: {
-            code,
-            language: detectLanguageFromCode(code, language),
-            type: "docs",
-            format,
-            includeExamples: true,
-          },
+          body: { code, language, type: "docs" },
         });
-        
+
         if (error) throw error;
-        
-        const docs = data?.completion || null;
-        
-        toast({
-          title: "Documentation Generated",
-          description: `Documentation created in ${format} format`,
-          variant: "default",
-        });
-        
-        return docs;
+        return data?.completion || null;
       } catch (error) {
         console.error("Generate docs error:", error);
         toast({
-          title: "Error",
-          description: "Failed to generate documentation",
+          title: "Xatolik",
+          description: "Dokumentatsiya yaratishda xatolik",
           variant: "destructive",
         });
         return null;
@@ -750,232 +791,138 @@ export const useAICompletions = () => {
         setIsLoading(false);
       }
     },
-    [checkRateLimit, toast]
+    [toast]
   );
 
-  // Find bugs in code
-  const findBugs = useCallback(
-    async (code: string, language: string): Promise<{ line: number; message: string; severity: "low" | "medium" | "high"; suggestion: string }[] | null> => {
-      if (!checkRateLimit()) return null;
-      
-      setIsLoading(true);
-      try {
-        const { data, error } = await supabase.functions.invoke("ai-completions", {
-          body: {
-            code,
-            language: detectLanguageFromCode(code, language),
-            type: "debug",
-            findBugs: true,
-          },
-        });
-        
-        if (error) throw error;
-        
-        const bugs = data?.bugs || [];
-        
-        if (bugs.length > 0) {
-          toast({
-            title: "Bugs Found",
-            description: `${bugs.length} potential issues detected`,
-            variant: "destructive",
-          });
-        }
-        
-        return bugs;
-      } catch (error) {
-        console.error("Find bugs error:", error);
-        return null;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [checkRateLimit, toast]
-  );
-
-  // Code review
-  const reviewCode = useCallback(
-    async (code: string, language: string): Promise<{ rating: number; comments: string[]; suggestions: string[] } | null> => {
-      if (!checkRateLimit()) return null;
-      
-      setIsLoading(true);
-      try {
-        const { data, error } = await supabase.functions.invoke("ai-completions", {
-          body: {
-            code,
-            language: detectLanguageFromCode(code, language),
-            type: "review",
-          },
-        });
-        
-        if (error) throw error;
-        
-        return {
-          rating: data?.rating || 0,
-          comments: data?.comments || [],
-          suggestions: data?.suggestions || [],
-        };
-      } catch (error) {
-        console.error("Review code error:", error);
-        return null;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [checkRateLimit]
-  );
-
-  // Utility functions
+  // ==================== UTILITIES ====================
+  
   const clearSuggestion = useCallback(() => {
     setCurrentSuggestion(null);
-    setSuggestions([]);
-    setActiveSuggestionIndex(0);
-    setConfidence(0);
   }, []);
 
   const cancelRequest = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
-      abortControllerRef.current = null;
     }
-    setIsLoading(false);
-    setIsStreaming(false);
   }, []);
-
-  const acceptSuggestion = useCallback((): string | null => {
-    const suggestion = currentSuggestion;
-    clearSuggestion();
-    return suggestion;
-  }, [currentSuggestion, clearSuggestion]);
-
-  const getCompletionStats = useCallback(() => {
-    return {
-      cacheSize: completionCacheRef.current.size,
-      rateLimitRemaining: MAX_REQUESTS_PER_WINDOW - rateLimitCountRef.current,
-      lastCompletionTime,
-      isRateLimited: rateLimitCountRef.current >= MAX_REQUESTS_PER_WINDOW,
-    };
-  }, [lastCompletionTime]);
 
   return {
     // State
     isLoading,
-    isStreaming,
     currentSuggestion,
-    suggestions,
-    activeSuggestionIndex,
-    confidence,
     
-    // Core completion methods
+    // Project generation (ko'p faylli)
+    generateFullProject,
+    generateComponent,
+    generateMultipleFiles,
+    
+    // Templates
+    templates: PROJECT_TEMPLATES,
+    
+    // Code completions
     getInlineCompletion,
-    getMultipleSuggestions,
-    getSmartCompletion,
     
-    // Navigation
-    nextSuggestion,
-    previousSuggestion,
-    
-    // Code analysis methods
+    // Code analysis
     explainCode,
     fixCode,
     generateTests,
     refactorCode,
     generateDocs,
-    findBugs,
-    reviewCode,
     
-    // Utility methods
+    // Utilities
     clearSuggestion,
     cancelRequest,
-    acceptSuggestion,
-    getCompletionStats,
   };
 };
 
-// ==================== CUSTOM HOOKS FOR SPECIFIC USE CASES ====================
+// ==================== EXAMPLE USAGE COMPONENT ====================
 
-// Hook for real-time inline completions with debouncing
-export const useRealTimeCompletions = (debounceDelay: number = DEBOUNCE_DELAY) => {
-  const [suggestion, setSuggestion] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const { getInlineCompletion } = useAICompletions();
-  
-  const debouncedGetCompletion = useDebounce(async (
-    code: string,
-    language: string,
-    cursorPosition: CursorPosition,
-    files?: FileItem[]
-  ) => {
-    setIsLoading(true);
-    const result = await getInlineCompletion(code, language, cursorPosition, files);
-    setSuggestion(result?.completion || null);
-    setIsLoading(false);
-  }, debounceDelay);
-  
-  return {
-    suggestion,
-    isLoading,
-    getCompletion: debouncedGetCompletion,
-    clearSuggestion: () => setSuggestion(null),
-  };
-};
+/*
+// Qanday ishlatish:
 
-// Hook for code analysis
-export const useCodeAnalysis = () => {
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const { explainCode, findBugs, reviewCode } = useAICompletions();
-  
-  const analyzeCode = useCallback(async (code: string, language: string) => {
-    setIsAnalyzing(true);
+const MyComponent = () => {
+  const { 
+    generateFullProject, 
+    generateComponent, 
+    generateMultipleFiles,
+    isLoading 
+  } = useAICompletions();
+
+  // 1. To'liq React loyihasi yaratish
+  const handleCreateReactApp = async () => {
+    const project = await generateFullProject(
+      "Create a todo list app with user authentication",
+      "react"
+    );
     
-    try {
-      const [explanation, bugs, review] = await Promise.all([
-        explainCode(code, language),
-        findBugs(code, language),
-        reviewCode(code, language),
-      ]);
-      
-      return {
-        explanation,
-        bugs,
-        review,
-      };
-    } finally {
-      setIsAnalyzing(false);
+    if (project) {
+      project.files.forEach(file => {
+        onCreateFile(file.name, file.path, false, file.language, file.content);
+      });
     }
-  }, [explainCode, findBugs, reviewCode]);
-  
-  return {
-    analyzeCode,
-    isAnalyzing,
   };
-};
 
-// Hook for code transformation
-export const useCodeTransformation = () => {
-  const [isTransforming, setIsTransforming] = useState(false);
-  const { fixCode, refactorCode } = useAICompletions();
-  
-  const transformCode = useCallback(async (
-    code: string,
-    language: string,
-    type: "fix" | "refactor",
-    options?: any
-  ) => {
-    setIsTransforming(true);
-    
-    try {
-      if (type === "fix") {
-        return await fixCode(code, language, options?.errors);
-      } else {
-        return await refactorCode(code, language, options?.patterns);
-      }
-    } finally {
-      setIsTransforming(false);
-    }
-  }, [fixCode, refactorCode]);
-  
-  return {
-    transformCode,
-    isTransforming,
+  // 2. Vue.js loyihasi
+  const handleCreateVueApp = async () => {
+    const project = await generateFullProject(
+      "Create a dashboard with charts",
+      "vue"
+    );
+    // Fayllarni yaratish...
   };
+
+  // 3. Full-stack loyiha
+  const handleCreateFullStack = async () => {
+    const project = await generateFullProject(
+      "E-commerce platform with products and cart",
+      "full-stack"
+    );
+    // Fayllarni yaratish...
+  };
+
+  // 4. Alohida komponent yaratish
+  const handleCreateComponent = async () => {
+    const component = await generateComponent(
+      "UserProfile",
+      "react",
+      { userId: "string", onUpdate: "function" }
+    );
+    
+    if (component) {
+      await onCreateFile(component.name, component.path, false, component.language, component.content);
+    }
+  };
+
+  // 5. Bir nechta fayl yaratish
+  const handleCreateMultipleFiles = async () => {
+    const files = await generateMultipleFiles(
+      "Create authentication system with login, register, and profile pages",
+      8
+    );
+    
+    for (const file of files) {
+      await onCreateFile(file.name, file.path, false, file.language, file.content);
+    }
+  };
+
+  return (
+    <div>
+      <button onClick={handleCreateReactApp} disabled={isLoading}>
+        Create React App
+      </button>
+      <button onClick={handleCreateVueApp} disabled={isLoading}>
+        Create Vue App
+      </button>
+      <button onClick={handleCreateFullStack} disabled={isLoading}>
+        Create Full Stack App
+      </button>
+      <button onClick={handleCreateComponent} disabled={isLoading}>
+        Add Component
+      </button>
+      <button onClick={handleCreateMultipleFiles} disabled={isLoading}>
+        Generate Multiple Files
+      </button>
+    </div>
+  );
 };
+*/
