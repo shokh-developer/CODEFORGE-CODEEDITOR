@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import {
   Bot, Send, X, Sparkles, Loader2, Code, Lightbulb, Bug, Zap,
   FileCode, FolderPlus, FilePlus, Wand2, Copy, Check, RefreshCw,
-  Maximize2, Minimize2, Rocket,
+  Rocket,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { useToast } from "@/hooks/use-toast";
@@ -85,10 +85,9 @@ const parseAIResponse = (content: string, language: string): { text: string; act
 };
 
 const AIAssistant = ({
-  code, language, files, activeFile, onCreateFile, onUpdateFileContent, author = "Shokh-Developer",
+  code, language, files, activeFile, onCreateFile, onUpdateFileContent,
 }: AIAssistantProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -113,7 +112,6 @@ const AIAssistant = ({
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages]);
 
-  // Streaming chat
   const sendMessage = useCallback(async (prompt: string) => {
     if (!prompt.trim() || isLoading) return;
     if (aiDisabled) {
@@ -151,13 +149,11 @@ const AIAssistant = ({
       const contentType = resp.headers.get("content-type") || "";
 
       if (contentType.includes("text/event-stream") && resp.body) {
-        // Streaming response
         let assistantContent = "";
         const reader = resp.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
 
-        // Add empty assistant message
         setMessages(prev => [...prev, { role: "assistant", content: "", timestamp: new Date() }]);
 
         while (true) {
@@ -184,11 +180,10 @@ const AIAssistant = ({
                   return updated;
                 });
               }
-            } catch { /* partial JSON, skip */ }
+            } catch { /* partial JSON */ }
           }
         }
 
-        // Parse actions from final content
         const { text, actions } = parseAIResponse(assistantContent, language);
         setMessages(prev => {
           const updated = [...prev];
@@ -200,7 +195,6 @@ const AIAssistant = ({
           return updated;
         });
       } else {
-        // Non-streaming JSON response
         const data = await resp.json();
         const responseText = data.response || data.error || "No response";
         const { text, actions } = parseAIResponse(responseText, language);
@@ -218,30 +212,27 @@ const AIAssistant = ({
     }
   }, [isLoading, aiDisabled, messages, files, activeFile, code, language, toast]);
 
-  // Generate full project
   const generateProject = useCallback(async (prompt: string) => {
     if (!prompt.trim() || isGenerating) return;
     setIsGenerating(true);
     setMessages(prev => [
       ...prev,
-      { role: "user", content: `🚀 Generate project: ${prompt}`, timestamp: new Date() },
+      { role: "user", content: `🚀 Generate: ${prompt}`, timestamp: new Date() },
       { role: "assistant", content: "⏳ Generating project files...", timestamp: new Date() },
     ]);
 
     try {
       const { data, error } = await supabase.functions.invoke("ai-assistant", {
-        body: { prompt, code: "", language: "html", mode: "generate-project" },
+        body: { prompt, code: "", language: "tsx", mode: "generate-project" },
       });
 
       if (error) throw new Error(error.message);
       if (data?.error) throw new Error(data.error);
 
       const responseText = data?.response || "[]";
-      // Extract JSON from response (might be wrapped in ```json)
       let jsonStr = responseText;
       const jsonMatch = responseText.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
       if (jsonMatch) jsonStr = jsonMatch[1];
-      // Also try without code blocks
       if (!jsonStr.trim().startsWith("[")) {
         const arrayMatch = responseText.match(/\[[\s\S]*\]/);
         if (arrayMatch) jsonStr = arrayMatch[0];
@@ -252,7 +243,7 @@ const AIAssistant = ({
 
       for (const file of generatedFiles) {
         if (file.name && file.content) {
-          await onCreateFile(file.name, file.path || "/", false, file.language || "html", file.content);
+          await onCreateFile(file.name, file.path || "/", false, file.language || "tsx", file.content);
           createdCount++;
         }
       }
@@ -261,7 +252,7 @@ const AIAssistant = ({
         const updated = [...prev];
         updated[updated.length - 1] = {
           ...updated[updated.length - 1],
-          content: `✅ Project generated! Created ${createdCount} files:\n\n${generatedFiles.map((f: any) => `- 📄 ${f.path || "/"}${f.name}`).join("\n")}\n\nYou can now edit any file in the explorer.`,
+          content: `✅ Project generated! Created ${createdCount} files:\n\n${generatedFiles.map((f: any) => `- 📄 ${f.path || "/"}${f.name}`).join("\n")}\n\nYou can now edit any file and click the 👁 Preview button to see results.`,
         };
         return updated;
       });
@@ -272,7 +263,7 @@ const AIAssistant = ({
         const updated = [...prev];
         updated[updated.length - 1] = {
           ...updated[updated.length - 1],
-          content: `❌ Failed to generate project: ${error?.message || "Unknown error"}`,
+          content: `❌ Failed to generate: ${error?.message || "Unknown error"}`,
         };
         return updated;
       });
@@ -308,7 +299,6 @@ const AIAssistant = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
-    // Check if it's a project generation request
     const lower = input.toLowerCase();
     if (lower.startsWith("/generate ") || lower.startsWith("/create project ") || lower.startsWith("/build ")) {
       generateProject(input.replace(/^\/(generate|create project|build)\s+/i, ""));
@@ -322,7 +312,7 @@ const AIAssistant = ({
   return (
     <>
       {/* Toggle Button */}
-      <motion.div className="fixed bottom-4 right-[132px] z-50" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 260, damping: 20 }}>
+      <motion.div className="fixed bottom-4 right-4 z-50" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 260, damping: 20 }}>
         <button
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
@@ -344,7 +334,7 @@ const AIAssistant = ({
         </button>
       </motion.div>
 
-      {/* Chat Panel */}
+      {/* Chat Panel - fixed size, consistent */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -352,43 +342,31 @@ const AIAssistant = ({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className={cn(
-              "fixed z-50 bg-card/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl shadow-primary/10 overflow-hidden flex flex-col",
-              isExpanded
-                ? "bottom-4 right-4 left-4 top-4 md:bottom-6 md:right-6 md:left-auto md:top-6 md:w-[750px]"
-                : "bottom-20 right-4 w-[95vw] md:w-[440px] lg:w-[500px] h-[75vh] md:h-[640px]"
-            )}
+            className="fixed z-50 bottom-[72px] right-4 w-[400px] h-[520px] bg-card/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl shadow-primary/10 overflow-hidden flex flex-col"
           >
             {/* Header */}
-            <div className="p-3 px-4 bg-gradient-to-r from-primary/15 to-transparent border-b border-border flex-shrink-0">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="h-9 w-9 rounded-lg bg-primary/20 flex items-center justify-center">
-                    <Bot className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-sm flex items-center gap-2">
-                      CodeForge AI
-                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                        STREAMING
-                      </span>
-                    </h3>
-                    <p className="text-[11px] text-muted-foreground">
-                      /generate to create full projects
-                    </p>
-                  </div>
+            <div className="h-12 px-4 bg-gradient-to-r from-primary/15 to-transparent border-b border-border flex items-center justify-between flex-shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="h-8 w-8 rounded-lg bg-primary/20 flex items-center justify-center">
+                  <Bot className="h-4 w-4 text-primary" />
                 </div>
-                <div className="flex items-center gap-0.5">
-                  <button onClick={() => setIsExpanded(!isExpanded)} className="p-1.5 rounded-lg hover:bg-muted/50 transition-colors">
-                    {isExpanded ? <Minimize2 className="h-3.5 w-3.5 text-muted-foreground" /> : <Maximize2 className="h-3.5 w-3.5 text-muted-foreground" />}
-                  </button>
-                  <button onClick={() => setMessages([])} className="p-1.5 rounded-lg hover:bg-muted/50 transition-colors">
-                    <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" />
-                  </button>
-                  <button onClick={() => setIsOpen(false)} className="p-1.5 rounded-lg hover:bg-muted/50 transition-colors">
-                    <X className="h-3.5 w-3.5 text-muted-foreground" />
-                  </button>
+                <div>
+                  <h3 className="font-semibold text-xs flex items-center gap-2">
+                    CodeForge AI
+                    <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                      LIVE
+                    </span>
+                  </h3>
+                  <p className="text-[10px] text-muted-foreground">/generate to create projects</p>
                 </div>
+              </div>
+              <div className="flex items-center gap-0.5">
+                <button onClick={() => setMessages([])} className="p-1.5 rounded-lg hover:bg-muted/50 transition-colors" title="Clear chat">
+                  <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+                <button onClick={() => setIsOpen(false)} className="p-1.5 rounded-lg hover:bg-muted/50 transition-colors" title="Close">
+                  <X className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
               </div>
             </div>
 
@@ -396,13 +374,12 @@ const AIAssistant = ({
             <ScrollArea className="flex-1 p-3" ref={scrollRef}>
               {messages.length === 0 ? (
                 <div className="space-y-4">
-                  <div className="text-center py-4">
-                    <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center mx-auto mb-3 border border-primary/20">
-                      <Wand2 className="h-8 w-8 text-primary" />
+                  <div className="text-center py-3">
+                    <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center mx-auto mb-3 border border-primary/20">
+                      <Wand2 className="h-7 w-7 text-primary" />
                     </div>
-                    <h4 className="font-semibold text-sm mb-1">CodeForge AI Assistant</h4>
-                    <p className="text-xs text-muted-foreground mb-1">Write code, fix bugs, generate projects</p>
-                    <p className="text-[10px] text-primary/70 font-medium">Type /generate to create a full project from prompt</p>
+                    <h4 className="font-semibold text-sm mb-1">CodeForge AI</h4>
+                    <p className="text-[11px] text-muted-foreground">Write code, fix bugs, generate full projects</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-1.5">
@@ -421,13 +398,12 @@ const AIAssistant = ({
                     ))}
                   </div>
 
-                  {/* Generate Project Button */}
                   <motion.button
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
                     onClick={() => setInput("/generate ")}
-                    className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-gradient-to-r from-primary/10 to-accent/10 hover:from-primary/20 hover:to-accent/20 border border-primary/20 hover:border-primary/40 transition-all"
+                    className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl bg-gradient-to-r from-primary/10 to-accent/10 hover:from-primary/20 hover:to-accent/20 border border-primary/20 hover:border-primary/40 transition-all"
                   >
                     <Rocket className="h-4 w-4 text-primary" />
                     <span className="text-xs font-medium text-primary">Generate Full Project</span>
@@ -442,18 +418,18 @@ const AIAssistant = ({
                       animate={{ opacity: 1, y: 0 }}
                       className={cn("flex gap-2", msg.role === "user" && "flex-row-reverse")}
                     >
-                      <Avatar className="h-7 w-7 flex-shrink-0">
-                        <AvatarFallback className={msg.role === "user" ? "bg-primary/20 text-primary text-xs" : "bg-accent/20 text-accent"}>
-                          {msg.role === "user" ? "U" : <Bot className="h-3.5 w-3.5" />}
+                      <Avatar className="h-6 w-6 flex-shrink-0">
+                        <AvatarFallback className={cn("text-[10px]", msg.role === "user" ? "bg-primary/20 text-primary" : "bg-accent/20 text-accent")}>
+                          {msg.role === "user" ? "U" : <Bot className="h-3 w-3" />}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 space-y-1.5 min-w-0">
                         <div className={cn(
-                          "p-2.5 rounded-xl text-[13px] leading-relaxed",
+                          "p-2.5 rounded-xl text-[12px] leading-relaxed",
                           msg.role === "user" ? "bg-primary/15 text-foreground" : "bg-background/60 border border-border/50"
                         )}>
                           {msg.role === "assistant" ? (
-                            <div className="prose prose-sm prose-invert max-w-none [&_pre]:my-2 [&_p]:my-1">
+                            <div className="prose prose-sm prose-invert max-w-none [&_pre]:my-2 [&_p]:my-1 text-[12px]">
                               <ReactMarkdown
                                 components={{
                                   code({ className, children, ...props }) {
@@ -462,16 +438,16 @@ const AIAssistant = ({
                                       const codeStr = String(children).replace(/\n$/, "");
                                       return (
                                         <div className="relative group my-2">
-                                          <pre className="bg-background/80 p-2.5 rounded-lg overflow-x-auto text-[11px] border border-border/30">
+                                          <pre className="bg-background/80 p-2 rounded-lg overflow-x-auto text-[10px] border border-border/30">
                                             <code {...props}>{children}</code>
                                           </pre>
-                                          <button onClick={() => copyCode(codeStr, index)} className="absolute top-1.5 right-1.5 p-1 rounded bg-muted/80 opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <button onClick={() => copyCode(codeStr, index)} className="absolute top-1 right-1 p-1 rounded bg-muted/80 opacity-0 group-hover:opacity-100 transition-opacity">
                                             {copiedIndex === index ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
                                           </button>
                                         </div>
                                       );
                                     }
-                                    return <code className="bg-background/80 px-1 py-0.5 rounded text-[11px] font-mono" {...props}>{children}</code>;
+                                    return <code className="bg-background/80 px-1 py-0.5 rounded text-[10px] font-mono" {...props}>{children}</code>;
                                   },
                                   pre: ({ children }) => <>{children}</>,
                                 }}
@@ -480,17 +456,16 @@ const AIAssistant = ({
                               </ReactMarkdown>
                             </div>
                           ) : (
-                            <span className="text-[13px]">{msg.content}</span>
+                            <span>{msg.content}</span>
                           )}
                         </div>
 
-                        {/* Actions */}
                         {msg.actions && msg.actions.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5">
+                          <div className="flex flex-wrap gap-1">
                             {msg.actions.map((action, ai) => (
                               <button
                                 key={ai}
-                                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 border border-primary/20 text-[11px] font-medium transition-colors"
+                                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 border border-primary/20 text-[10px] font-medium transition-colors"
                                 onClick={() => handleAction(action)}
                               >
                                 {action.type === "create_file" && <><FilePlus className="h-3 w-3 text-primary" /> {action.name}</>}
@@ -506,11 +481,11 @@ const AIAssistant = ({
 
                   {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-2">
-                      <Avatar className="h-7 w-7">
-                        <AvatarFallback className="bg-accent/20 text-accent"><Loader2 className="h-3.5 w-3.5 animate-spin" /></AvatarFallback>
+                      <Avatar className="h-6 w-6">
+                        <AvatarFallback className="bg-accent/20 text-accent"><Loader2 className="h-3 w-3 animate-spin" /></AvatarFallback>
                       </Avatar>
-                      <div className="p-2.5 rounded-xl bg-background/60 border border-border/50 text-xs text-muted-foreground flex items-center gap-2">
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Thinking...
+                      <div className="p-2.5 rounded-xl bg-background/60 border border-border/50 text-[11px] text-muted-foreground flex items-center gap-2">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Thinking...
                       </div>
                     </motion.div>
                   )}
@@ -524,21 +499,18 @@ const AIAssistant = ({
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder={isGenerating ? "Generating project..." : "Ask anything or /generate project..."}
-                  className="flex-1 h-10 text-sm bg-background/50 border-border/50 focus:border-primary/50"
+                  placeholder={isGenerating ? "Generating..." : "Ask or /generate ..."}
+                  className="flex-1 h-9 text-xs bg-background/50 border-border/50 focus:border-primary/50"
                   disabled={isLoading || isGenerating}
                 />
                 <button
                   type="submit"
                   disabled={isLoading || isGenerating || !input.trim()}
-                  className="h-10 w-10 rounded-lg bg-primary/20 hover:bg-primary/30 border border-primary/30 flex items-center justify-center transition-colors disabled:opacity-40"
+                  className="h-9 w-9 rounded-lg bg-primary/20 hover:bg-primary/30 border border-primary/30 flex items-center justify-center transition-colors disabled:opacity-40"
                 >
-                  {isLoading || isGenerating ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : <Send className="h-4 w-4 text-primary" />}
+                  {isLoading || isGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> : <Send className="h-3.5 w-3.5 text-primary" />}
                 </button>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-1.5 text-center">
-                💡 /generate e-commerce site · /build portfolio · or just ask anything
-              </p>
             </form>
           </motion.div>
         )}
