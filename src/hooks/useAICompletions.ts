@@ -36,9 +36,10 @@ interface FileItem {
 
 // ==================== CONSTANTS ====================
 
-const PROJECT_TEMPLATES = {
+const PROJECT_TEMPLATES: Record<string, ProjectStructure> = {
   react: {
     name: "React App",
+    description: "A modern React application with TypeScript and Vite",
     files: [
       {
         name: "index.html",
