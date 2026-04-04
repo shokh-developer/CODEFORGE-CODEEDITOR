@@ -301,6 +301,7 @@ body {
   },
   "full-stack": {
     name: "Full Stack App (Express + React)",
+    description: "A full-stack application with Express backend and React frontend",
     files: [
       {
         name: "server.js",
