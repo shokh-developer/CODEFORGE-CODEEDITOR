@@ -397,32 +397,34 @@ const CodeForgePanel = ({ code, language, files, activeFile, onCreateFile, onUpd
         ) : (
           <div className="space-y-3">
             {messages.map(msg => (
-              <div key={msg.id} className={cn("flex gap-2", msg.role === "user" && "flex-row-reverse")}>
-                <Avatar className="h-6 w-6 flex-shrink-0">
-                  <AvatarFallback className={cn("text-[10px]", msg.role === "user" ? "bg-primary/20 text-primary" : "bg-accent/20 text-accent-foreground")}>
-                    {msg.role === "user" ? "U" : <Bot className="h-3 w-3" />}
-                  </AvatarFallback>
-                </Avatar>
-                <div className={cn("flex-1 p-2.5 rounded-xl text-xs min-w-0", msg.role === "user" ? "bg-primary/15 rounded-tr-sm" : "bg-muted/30 border border-border/30 rounded-tl-sm")}>
-                  {msg.role === "assistant" ? (
-                    <MarkdownContent content={msg.content} language={language} onApplyCode={(c) => activeFile && onUpdateFileContent(activeFile.id, c)} />
-                  ) : (
-                    <span className="whitespace-pre-wrap">{msg.content}</span>
-                  )}
+              <div key={msg.id} className="space-y-1">
+                <div className={cn("flex gap-2", msg.role === "user" && "flex-row-reverse")}>
+                  <Avatar className="h-6 w-6 flex-shrink-0">
+                    <AvatarFallback className={cn("text-[10px]", msg.role === "user" ? "bg-primary/20 text-primary" : "bg-accent/20 text-accent-foreground")}>
+                      {msg.role === "user" ? "U" : <Bot className="h-3 w-3" />}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className={cn("flex-1 p-2.5 rounded-xl text-xs min-w-0", msg.role === "user" ? "bg-primary/15 rounded-tr-sm" : "bg-muted/30 border border-border/30 rounded-tl-sm")}>
+                    {msg.role === "assistant" ? (
+                      <MarkdownContent content={msg.content} language={language} onApplyCode={(c) => activeFile && onUpdateFileContent(activeFile.id, c)} />
+                    ) : (
+                      <span className="whitespace-pre-wrap">{msg.content}</span>
+                    )}
+                  </div>
                 </div>
+                {msg.actions && msg.actions.length > 0 && (
+                  <div className="flex flex-wrap gap-1 ml-8">
+                    {msg.actions.map((action, i) => (
+                      <button key={i} onClick={() => handleAction(action)}
+                        className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 hover:bg-primary/20 border border-primary/20 text-[9px] font-medium">
+                        {action.type === "create_file" && <><FilePlus className="h-2.5 w-2.5" /> {action.name}</>}
+                        {action.type === "apply_code" && <><FileCode className="h-2.5 w-2.5" /> Apply</>}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
-            {msg.actions && msg.actions.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-1">
-                {msg.actions.map((action, i) => (
-                  <button key={i} onClick={() => handleAction(action)}
-                    className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 hover:bg-primary/20 border border-primary/20 text-[9px] font-medium">
-                    {action.type === "create_file" && <><FilePlus className="h-2.5 w-2.5" /> {action.name}</>}
-                    {action.type === "apply_code" && <><FileCode className="h-2.5 w-2.5" /> Apply</>}
-                  </button>
-                ))}
-              </div>
-            )}
             {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
               <div className="flex gap-2">
                 <Avatar className="h-6 w-6"><AvatarFallback className="bg-accent/20"><Loader2 className="h-3 w-3 animate-spin" /></AvatarFallback></Avatar>
