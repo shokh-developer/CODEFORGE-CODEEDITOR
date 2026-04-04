@@ -221,20 +221,19 @@ const useConversations = (projectId?: string) => {
   const [conversations, setConversations] = useLocalStorage<Conversation[]>("ai-conversations", []);
   
   const saveConversation = useCallback((conversation: Conversation) => {
-    setConversations(prev => {
-      const index = prev.findIndex(c => c.id === conversation.id);
-      if (index >= 0) {
-        const updated = [...prev];
-        updated[index] = conversation;
-        return updated;
-      }
-      return [conversation, ...prev];
-    });
-  }, [setConversations]);
+    const updated = [...conversations];
+    const index = updated.findIndex(c => c.id === conversation.id);
+    if (index >= 0) {
+      updated[index] = conversation;
+    } else {
+      updated.unshift(conversation);
+    }
+    setConversations(updated);
+  }, [conversations, setConversations]);
 
   const deleteConversation = useCallback((id: string) => {
-    setConversations(prev => prev.filter(c => c.id !== id));
-  }, [setConversations]);
+    setConversations(conversations.filter(c => c.id !== id));
+  }, [conversations, setConversations]);
 
   const getProjectConversations = useCallback(() => {
     return conversations.filter(c => c.projectId === projectId);

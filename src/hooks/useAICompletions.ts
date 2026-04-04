@@ -36,9 +36,10 @@ interface FileItem {
 
 // ==================== CONSTANTS ====================
 
-const PROJECT_TEMPLATES = {
+const PROJECT_TEMPLATES: Record<string, ProjectStructure> = {
   react: {
     name: "React App",
+    description: "A modern React application with TypeScript and Vite",
     files: [
       {
         name: "index.html",
@@ -211,6 +212,7 @@ export default defineConfig({
   },
   vue: {
     name: "Vue.js App",
+    description: "A Vue.js application with TypeScript",
     files: [
       {
         name: "index.html",
@@ -299,6 +301,7 @@ body {
   },
   "full-stack": {
     name: "Full Stack App (Express + React)",
+    description: "A full-stack application with Express backend and React frontend",
     files: [
       {
         name: "server.js",
