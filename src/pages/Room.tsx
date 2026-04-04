@@ -10,12 +10,11 @@ import EditorHeader from "@/components/EditorHeader";
 import EditorWelcome from "@/components/EditorWelcome";
 import StatusBar from "@/components/StatusBar";
 import Terminal from "@/components/Terminal";
-import RoomChat from "@/components/RoomChat";
 import AdminPanel from "@/components/AdminPanel";
-import AIAssistant from "@/components/AIAssistant";
 import LivePreview from "@/components/LivePreview";
+import WorkspacePanel from "@/components/WorkspacePanel";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, PanelLeftClose, PanelLeft, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Loader2, PanelLeftClose, PanelLeft, Eye, EyeOff, Bot, BotOff } from "lucide-react";
 import { useState, useCallback, useEffect } from "react";
 import { debounce } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -41,8 +40,8 @@ const Room = () => {
   const [terminalOpen, setTerminalOpen] = useState(true);
   const [localContent, setLocalContent] = useState("");
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(true);
 
-  // Close sidebar on mobile when file selected
   useEffect(() => {
     if (isMobile) setSidebarOpen(false);
   }, [activeFile?.id]);
@@ -76,8 +75,6 @@ const Room = () => {
         if (message.includes("banned") || message.includes("kicked")) {
           toast({ title: "Access denied", description: result.error.message, variant: "destructive" });
           navigate("/", { replace: true });
-        } else {
-          console.warn("Room membership sync skipped:", result.error.message);
         }
       }
     };
@@ -91,7 +88,7 @@ const Room = () => {
         async () => {
           const access = await checkRoomAccess(room.id);
           if (!access.allowed) {
-            toast({ title: "Removed from room", description: access.reason === "banned" ? "You were banned." : "Access denied.", variant: "destructive" });
+            toast({ title: "Removed from room", description: "You were banned.", variant: "destructive" });
             navigate("/", { replace: true });
           }
         }
@@ -227,6 +224,14 @@ const Room = () => {
         >
           {previewOpen ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </button>
+        {/* Panel toggle */}
+        <button
+          onClick={() => setPanelOpen(!panelOpen)}
+          className={`h-10 w-10 flex items-center justify-center hover:bg-secondary transition-colors duration-150 border-l border-border ${panelOpen ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
+          title={panelOpen ? "Close AI panel" : "Open AI panel"}
+        >
+          {panelOpen ? <BotOff className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+        </button>
       </div>
 
       {/* Main content */}
@@ -250,7 +255,7 @@ const Room = () => {
         </div>
 
         {/* Editor area */}
-        <div className={`flex-1 flex flex-col overflow-hidden min-w-0 ${previewOpen ? 'w-1/2' : ''}`}>
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           <EditorTabs
             tabs={openTabFiles.map(f => ({ id: f.id, name: f.name, language: f.language }))}
             activeTabId={activeFile?.id || null} onTabSelect={handleTabSelect} onTabClose={handleTabClose}
@@ -268,18 +273,29 @@ const Room = () => {
 
         {/* Live Preview */}
         {previewOpen && (
-          <div className="w-1/2 h-full">
+          <div className="w-[40%] h-full border-l border-border">
             <LivePreview files={files} activeFile={activeFile} isOpen={previewOpen} onToggle={() => setPreviewOpen(false)} />
           </div>
         )}
-      </div>
 
-      <RoomChat roomId={id || ""} />
-      <AIAssistant
-        code={localContent} language={activeFile?.language || "javascript"} files={files} activeFile={activeFile}
-        onCreateFile={async (name, path, isFolder, language, content) => await createFile(name, path, isFolder, language, content)}
-        onUpdateFileContent={(fileId, content) => { updateFileContent(fileId, content); setLocalContent(content); }}
-      />
+        {/* Workspace Panel (BuildForge AI / CodeForge AI / Team Chat) */}
+        {panelOpen && (
+          <div className="w-[380px] h-full flex-shrink-0">
+            <WorkspacePanel
+              isOpen={panelOpen}
+              onToggle={() => setPanelOpen(!panelOpen)}
+              roomId={id || ""}
+              code={localContent}
+              language={activeFile?.language || "javascript"}
+              files={files}
+              activeFile={activeFile}
+              onCreateFile={async (name, path, isFolder, language, content) => await createFile(name, path, isFolder, language, content)}
+              onUpdateFileContent={(fileId, content) => { updateFileContent(fileId, content); setLocalContent(content); }}
+              projectName={room.name}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 };
