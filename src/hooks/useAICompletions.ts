@@ -212,6 +212,7 @@ export default defineConfig({
   },
   vue: {
     name: "Vue.js App",
+    description: "A Vue.js application with TypeScript",
     files: [
       {
         name: "index.html",
