@@ -33,7 +33,46 @@ const LivePreview = ({ files, activeFile, isOpen, onToggle }: LivePreviewProps) 
 
   const buildPreview = useCallback(() => {
     const htmlFile = files.find(f => f.name.endsWith(".html") && !f.is_folder);
-    if (!htmlFile) return;
+
+    // If no HTML file, try to build a preview from TSX/JSX files
+    if (!htmlFile) {
+      const tsxFiles = files.filter(f => (f.name.endsWith(".tsx") || f.name.endsWith(".jsx")) && !f.is_folder);
+      const cssFiles = files.filter(f => f.name.endsWith(".css") && !f.is_folder);
+      if (tsxFiles.length === 0) return;
+
+      // Build a combined preview from TSX files
+      const allCode = tsxFiles.map(f => f.content).join("\n\n");
+      const cssInject = cssFiles.map(f => `<style>${f.content}</style>`).join("\n");
+      const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+  ${cssInject}
+  <style>body { margin: 0; font-family: system-ui, sans-serif; }</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    ${allCode}
+    
+    // Try to find and render the main component
+    const components = [typeof App !== 'undefined' && App, typeof Main !== 'undefined' && Main].filter(Boolean);
+    if (components.length > 0) {
+      ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(components[0]));
+    }
+  </script>
+</body>
+</html>`;
+      const blob = new Blob([htmlContent], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      setPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
 
     let htmlContent = htmlFile.content;
 
@@ -89,7 +128,7 @@ const LivePreview = ({ files, activeFile, isOpen, onToggle }: LivePreviewProps) 
 
   if (!isOpen) return null;
 
-  const hasHtml = files.some(f => f.name.endsWith(".html") && !f.is_folder);
+  const hasPreviewable = files.some(f => (f.name.endsWith(".html") || f.name.endsWith(".tsx") || f.name.endsWith(".jsx")) && !f.is_folder);
 
   return (
     <div className="flex flex-col h-full bg-background border-l border-border">
@@ -132,7 +171,7 @@ const LivePreview = ({ files, activeFile, isOpen, onToggle }: LivePreviewProps) 
 
       {/* Preview Area */}
       <div className="flex-1 flex items-start justify-center p-2 overflow-auto bg-[#0a0a0f]">
-        {hasHtml ? (
+        {hasPreviewable ? (
           <div
             className="bg-background rounded-lg overflow-hidden shadow-lg border border-border/30 h-full transition-all duration-300"
             style={{ width: viewportSizes[viewport].width, maxWidth: "100%" }}
@@ -150,8 +189,8 @@ const LivePreview = ({ files, activeFile, isOpen, onToggle }: LivePreviewProps) 
             <div className="h-12 w-12 rounded-xl bg-muted/20 flex items-center justify-center">
               <Eye className="h-6 w-6 text-muted-foreground/50" />
             </div>
-            <p className="text-sm text-muted-foreground">No HTML file to preview</p>
-            <p className="text-xs text-muted-foreground/70">Create an HTML file or use /generate to create a project</p>
+            <p className="text-sm text-muted-foreground">No previewable files</p>
+            <p className="text-xs text-muted-foreground/70">Create an HTML or TSX file to preview</p>
           </div>
         )}
       </div>

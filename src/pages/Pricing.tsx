@@ -12,13 +12,13 @@ const plans = [
     id: "free",
     name: "Free",
     price: 0,
-    description: "Boshlash uchun",
+    description: "Get started",
     icon: Sparkles,
     features: [
-      "5 ta xona yaratish",
-      "Asosiy AI yordamchi",
-      "Cheksiz fayllar",
-      "Hamjamiyat qo'llab-quvvatlash",
+      "5 rooms",
+      "Basic AI assistant",
+      "Unlimited files",
+      "Community support",
     ],
     priceId: null,
   },
@@ -26,16 +26,16 @@ const plans = [
     id: "pro",
     name: "Pro",
     price: 9.99,
-    description: "Professional dasturchilar uchun",
+    description: "For professional developers",
     icon: Zap,
     popular: true,
     features: [
-      "Cheksiz xonalar",
-      "Kengaytirilgan AI (GPT-5, Gemini Pro)",
-      "Priority kod ishga tushirish",
-      "Real-time hamkorlik",
-      "Shaxsiy themalar",
-      "Email qo'llab-quvvatlash",
+      "Unlimited rooms",
+      "Advanced AI (GPT-5, Gemini Pro)",
+      "Priority code execution",
+      "Real-time collaboration",
+      "Custom themes",
+      "Email support",
     ],
     priceId: TIERS.pro.price_id,
   },
@@ -43,15 +43,15 @@ const plans = [
     id: "team",
     name: "Team",
     price: 29.99,
-    description: "Jamoalar uchun",
+    description: "For teams",
     icon: Users,
     features: [
-      "Pro ning barcha imkoniyatlari",
-      "10 tagacha jamoa a'zolari",
-      "Jamoa boshqaruvi",
-      "Birgalikda kodlash",
+      "Everything in Pro",
+      "Up to 10 team members",
+      "Team management",
+      "Collaborative coding",
       "Admin panel",
-      "Priority qo'llab-quvvatlash",
+      "Priority support",
     ],
     priceId: TIERS.team.price_id,
   },
@@ -59,15 +59,15 @@ const plans = [
     id: "enterprise",
     name: "Enterprise",
     price: null,
-    description: "Katta tashkilotlar uchun",
+    description: "For large organizations",
     icon: Building,
     features: [
-      "Team ning barcha imkoniyatlari",
-      "Cheksiz a'zolar",
-      "SSO integratsiya",
-      "Maxsus AI modellar",
-      "SLA kafolat",
-      "Shaxsiy menejer",
+      "Everything in Team",
+      "Unlimited members",
+      "SSO integration",
+      "Custom AI models",
+      "SLA guarantee",
+      "Dedicated manager",
     ],
     priceId: null,
   },
@@ -110,8 +110,8 @@ const Pricing = () => {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-foreground tracking-tight">Narxlar</h1>
-            <p className="text-sm text-muted-foreground mt-1">O'zingizga mos rejani tanlang</p>
+          <h1 className="text-3xl font-bold text-foreground tracking-tight">Pricing</h1>
+          <p className="text-sm text-muted-foreground mt-1">Choose the plan that fits you</p>
           </div>
         </motion.div>
 
@@ -137,13 +137,13 @@ const Pricing = () => {
               >
                 {plan.popular && (
                   <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground px-3">
-                    <Crown className="h-3 w-3 mr-1" /> Mashhur
+                    <Crown className="h-3 w-3 mr-1" /> Popular
                   </Badge>
                 )}
 
                 {isActive && (
                   <Badge variant="outline" className="absolute -top-3 left-1/2 -translate-x-1/2 border-primary/50 text-primary">
-                    <Check className="h-3 w-3 mr-1" /> Hozirgi reja
+                    <Check className="h-3 w-3 mr-1" /> Current plan
                   </Badge>
                 )}
 
@@ -177,15 +177,15 @@ const Pricing = () => {
 
                 {isActive ? (
                   <Button variant="outline" className="w-full" onClick={manageSubscription} disabled={!subscribed}>
-                    {subscribed ? "Obunani boshqarish" : "Hozirgi reja"}
+                    {subscribed ? "Manage subscription" : "Current plan"}
                   </Button>
                 ) : plan.id === "free" ? (
                   <Button variant="outline" className="w-full" disabled>
-                    {currentTier === "free" ? "Hozirgi reja" : "Bepul"}
+                    {currentTier === "free" ? "Current plan" : "Free"}
                   </Button>
                 ) : plan.id === "enterprise" ? (
                   <Button variant="outline" className="w-full" onClick={() => handleCheckout(null, "enterprise")}>
-                    Bog'lanish
+                    Contact us
                   </Button>
                 ) : (
                   <Button
@@ -194,9 +194,9 @@ const Pricing = () => {
                     disabled={checkoutLoading === plan.id || loading}
                   >
                     {checkoutLoading === plan.id ? (
-                      <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Yuklanmoqda...</>
+                      <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Loading...</>
                     ) : (
-                      "Boshlash"
+                      "Get started"
                     )}
                   </Button>
                 )}
@@ -207,9 +207,9 @@ const Pricing = () => {
 
         {/* FAQ */}
         <motion.div className="mt-16 max-w-2xl mx-auto text-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
-          <h2 className="text-xl font-bold text-foreground mb-2">Savollaringiz bormi?</h2>
+          <h2 className="text-xl font-bold text-foreground mb-2">Have questions?</h2>
           <p className="text-sm text-muted-foreground">
-            contact@kodo.uz manziliga yozing yoki Telegram orqali bog'laning
+            Email us at contact@kodo.uz or reach out via Telegram
           </p>
         </motion.div>
       </div>
