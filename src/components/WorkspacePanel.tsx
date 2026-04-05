@@ -494,7 +494,7 @@ const TeamChatPanel = ({ roomId }: { roomId: string }) => {
 
   const handleSend = async () => {
     if (!newMessage.trim() || !user || sending) return;
-    if (mutedByAdmin) { toast({ title: "Muted", description: "Siz bu xonada ovozingiz o'chirilgan.", variant: "destructive" }); return; }
+    if (mutedByAdmin) { toast({ title: "Muted", description: "You are muted in this room.", variant: "destructive" }); return; }
     setSending(true);
     try {
       await supabase.from("chat_messages").insert({ room_id: roomId, user_id: user.id, content: newMessage.trim() });
@@ -512,7 +512,7 @@ const TeamChatPanel = ({ roomId }: { roomId: string }) => {
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center py-8">
             <MessageCircle className="h-8 w-8 text-muted-foreground/40 mb-2" />
-            <p className="text-xs text-muted-foreground">Hali xabarlar yo'q</p>
+            <p className="text-xs text-muted-foreground">No messages yet</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -538,7 +538,7 @@ const TeamChatPanel = ({ roomId }: { roomId: string }) => {
       {isAuthenticated ? (
         <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="p-2 border-t border-border/50">
           <div className="flex gap-1.5">
-            <Input value={newMessage} onChange={e => setNewMessage(e.target.value)} placeholder={mutedByAdmin ? "Muted" : "Xabar yozing..."} className="flex-1 h-8 text-xs bg-background/50" disabled={sending || mutedByAdmin} />
+            <Input value={newMessage} onChange={e => setNewMessage(e.target.value)} placeholder={mutedByAdmin ? "Muted" : "Type a message..."} className="flex-1 h-8 text-xs bg-background/50" disabled={sending || mutedByAdmin} />
             <Button type="submit" size="sm" className="h-8 w-8 p-0" disabled={!newMessage.trim() || sending || mutedByAdmin}>
               <Send className="h-3.5 w-3.5" />
             </Button>
@@ -546,7 +546,7 @@ const TeamChatPanel = ({ roomId }: { roomId: string }) => {
         </form>
       ) : (
         <div className="p-2 border-t border-border/50 text-center">
-          <p className="text-xs text-muted-foreground">Chatda yozish uchun tizimga kiring</p>
+          <p className="text-xs text-muted-foreground">Sign in to chat</p>
         </div>
       )}
     </div>

@@ -16,10 +16,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Shield, Users, Ban, VolumeX, UserX, Crown, Trash2, Clock, Sparkles } from "lucide-react";
+import { Shield, Users, Ban, VolumeX, UserX, Crown, Trash2, Clock, Sparkles, CreditCard } from "lucide-react";
 
 type AppRole = "admin" | "moderator" | "user";
-interface User { user_id: string; display_name: string | null; avatar_url: string | null; role: AppRole; ai_enabled?: boolean; }
+type PlanType = "free" | "pro" | "team" | "enterprise";
+interface User { user_id: string; display_name: string | null; avatar_url: string | null; role: AppRole; ai_enabled?: boolean; plan?: PlanType; }
 interface UserBan { id: string; user_id: string; room_id: string | null; banned_by: string; ban_type: "ban" | "kick" | "mute"; reason: string | null; expires_at: string | null; created_at: string; }
 interface AdminPanelProps { roomId?: string; }
 
@@ -41,7 +42,9 @@ const AdminPanel = ({ roomId }: AdminPanelProps) => {
     const [usersData, bansData] = await Promise.all([getAllUsers(), getBans(roomId)]);
     const { data: aiAccessData } = await supabase.from("user_ai_access").select("user_id, ai_enabled");
     const aiMap = new Map(aiAccessData?.map(a => [a.user_id, a.ai_enabled]) || []);
-    setUsers(usersData.map(u => ({ ...u, ai_enabled: aiMap.get(u.user_id) ?? true })));
+    const { data: subData } = await supabase.from("user_subscriptions").select("user_id, plan");
+    const subMap = new Map(subData?.map((s: any) => [s.user_id, s.plan as PlanType]) || []);
+    setUsers(usersData.map(u => ({ ...u, ai_enabled: aiMap.get(u.user_id) ?? true, plan: subMap.get(u.user_id) || "free" })));
     setBans(bansData);
   };
 
@@ -83,6 +86,25 @@ const AdminPanel = ({ roomId }: AdminPanelProps) => {
     else { toast({ title: "Role updated" }); loadData(); }
   };
 
+  const handlePlanChange = async (userId: string, plan: PlanType) => {
+    if (!isAdmin) { toast({ title: "Only admins can change plans", variant: "destructive" }); return; }
+    const currentUser = (await supabase.auth.getUser()).data.user;
+    const { error } = await supabase.from("user_subscriptions" as any)
+      .upsert({ user_id: userId, plan, assigned_by: currentUser?.id, assigned_at: new Date().toISOString() } as any, { onConflict: 'user_id' } as any);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
+    else { setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, plan } : u)); toast({ title: "Plan updated", description: `Set to ${plan}` }); }
+  };
+
+  const getPlanBadge = (plan: PlanType) => {
+    const colors: Record<PlanType, string> = {
+      free: "bg-muted text-muted-foreground",
+      pro: "bg-primary/20 text-primary border-primary/30",
+      team: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+      enterprise: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+    };
+    return <Badge className={`${colors[plan]} gap-1 text-[10px]`}><CreditCard className="h-2.5 w-2.5" /> {plan.charAt(0).toUpperCase() + plan.slice(1)}</Badge>;
+  };
+
   const getRoleBadge = (role: AppRole) => {
     switch (role) {
       case "admin": return <Badge variant="destructive" className="gap-1"><Crown className="h-3 w-3" /> Admin</Badge>;
@@ -117,8 +139,9 @@ const AdminPanel = ({ roomId }: AdminPanelProps) => {
         </DialogHeader>
 
         <Tabs defaultValue="users" className="mt-4">
-          <TabsList className="grid w-full grid-cols-3 bg-background/50">
+          <TabsList className="grid w-full grid-cols-4 bg-background/50">
             <TabsTrigger value="users" className="gap-1 text-xs"><Users className="h-3 w-3" /> Users</TabsTrigger>
+            <TabsTrigger value="plans" className="gap-1 text-xs"><CreditCard className="h-3 w-3" /> Plans</TabsTrigger>
             <TabsTrigger value="actions" className="gap-1 text-xs"><Ban className="h-3 w-3" /> Actions</TabsTrigger>
             <TabsTrigger value="bans" className="gap-1 text-xs"><UserX className="h-3 w-3" /> Restrictions</TabsTrigger>
           </TabsList>
@@ -158,6 +181,39 @@ const AdminPanel = ({ roomId }: AdminPanelProps) => {
                         </Select>
                       ) : getRoleBadge(user.role)}
                     </div>
+                  </motion.div>
+                ))}
+              </div>
+            </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="plans" className="mt-4">
+            <ScrollArea className="h-[300px] pr-4">
+              <div className="space-y-2">
+                {users.map((user) => (
+                  <motion.div key={user.user_id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
+                    className="flex items-center justify-between p-3 rounded-lg bg-background/30 border border-border/50">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={user.avatar_url || undefined} />
+                        <AvatarFallback className="bg-primary/10 text-primary text-xs">{user.display_name?.[0]?.toUpperCase() || "U"}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium text-sm">{user.display_name || "Unknown"}</p>
+                        {getPlanBadge(user.plan || "free")}
+                      </div>
+                    </div>
+                    {isAdmin && (
+                      <Select value={user.plan || "free"} onValueChange={(v) => handlePlanChange(user.user_id, v as PlanType)}>
+                        <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="free">Free</SelectItem>
+                          <SelectItem value="pro">Pro</SelectItem>
+                          <SelectItem value="team">Team</SelectItem>
+                          <SelectItem value="enterprise">Enterprise</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
                   </motion.div>
                 ))}
               </div>
