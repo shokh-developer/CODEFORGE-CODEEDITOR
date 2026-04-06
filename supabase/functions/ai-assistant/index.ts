@@ -68,6 +68,35 @@ Current file language: ${language}
 ${code || "// Empty file"}
 \`\`\``;
 
+const PROJECT_FILES_TOOL = {
+  type: "function",
+  function: {
+    name: "return_project_files",
+    description: "Return the full project as a structured list of files.",
+    parameters: {
+      type: "object",
+      properties: {
+        files: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              path: { type: "string" },
+              language: { type: "string" },
+              content: { type: "string" },
+            },
+            required: ["name", "path", "language", "content"],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ["files"],
+      additionalProperties: false,
+    },
+  },
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -104,11 +133,16 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: "google/gemini-3-flash-preview",
           messages: allMessages,
-          temperature: 0.3,
+          temperature: 0.2,
           max_tokens: 32768,
           stream: false,
+          tools: [PROJECT_FILES_TOOL],
+          tool_choice: {
+            type: "function",
+            function: { name: "return_project_files" },
+          },
         }),
       });
 
@@ -125,6 +159,22 @@ serve(async (req) => {
 
       if (resp.ok) {
         const data = await resp.json();
+        const toolArguments = data.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
+
+        if (toolArguments) {
+          try {
+            const parsed = JSON.parse(toolArguments);
+            const files = Array.isArray(parsed?.files) ? parsed.files : [];
+
+            return new Response(
+              JSON.stringify({ response: JSON.stringify(files), mode: "generate-project" }),
+              { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          } catch (toolError) {
+            console.error("Failed to parse tool arguments:", toolError);
+          }
+        }
+
         const text = data.choices?.[0]?.message?.content || "[]";
         return new Response(
           JSON.stringify({ response: text, mode: "generate-project" }),

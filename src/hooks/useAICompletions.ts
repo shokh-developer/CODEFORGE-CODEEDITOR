@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { normalizeGeneratedProjectFiles, parseAiJsonResponse } from "@/lib/ai-json";
 
 // ==================== TYPES ====================
 
@@ -448,16 +449,8 @@ Generate REAL, WORKING code. Make it professional and production-ready.`,
         if (error) throw error;
         
         let projectData: ProjectStructure;
-        
-        // Parse AI response
         const responseText = data?.response || data?.completion || "";
-        const jsonMatch = responseText.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
-        
-        if (jsonMatch) {
-          projectData = JSON.parse(jsonMatch[1]);
-        } else {
-          projectData = JSON.parse(responseText);
-        }
+        projectData = parseAiJsonResponse<ProjectStructure>(responseText, "object");
         
         // Validate and ensure required files exist
         if (!projectData.files.some(f => f.name === "index.html")) {
@@ -584,15 +577,8 @@ Make them work together as a cohesive system.`,
         
         if (error) throw error;
         
-        let files: FileStructure[] = [];
         const responseText = data?.response || data?.completion || "";
-        const jsonMatch = responseText.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
-        
-        if (jsonMatch) {
-          files = JSON.parse(jsonMatch[1]);
-        } else {
-          files = JSON.parse(responseText);
-        }
+        const files = normalizeGeneratedProjectFiles(responseText) as FileStructure[];
         
         toast({
           title: "Files Generated",

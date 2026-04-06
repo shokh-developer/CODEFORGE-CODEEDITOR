@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { collectGeneratedFolders, normalizeGeneratedProjectFiles } from "@/lib/ai-json";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useToast } from "@/hooks/use-toast";
@@ -73,6 +74,12 @@ type TabId = "buildforge" | "codeforge" | "chat";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
 const generateId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+const BUILDFORGE_STARTERS = [
+  "Modern React TSX landing page with sections and responsive design",
+  "Python Telegram bot with /start and /help commands, requirements.txt and README",
+  "Admin dashboard with charts, settings page and reusable components",
+];
 
 // ==================== CODE BLOCK ====================
 
@@ -181,18 +188,19 @@ const BuildForgePanel = ({ code, language, files, activeFile, onCreateFile, onUp
       if (data?.error) throw new Error(data.error);
 
       const responseText = data?.response || "[]";
-      let jsonStr = responseText;
-      const jsonMatch = responseText.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
-      if (jsonMatch) jsonStr = jsonMatch[1];
-      if (!jsonStr.trim().startsWith("[")) {
-        const arrayMatch = responseText.match(/\[[\s\S]*\]/);
-        if (arrayMatch) jsonStr = arrayMatch[0];
+      const generatedFiles = normalizeGeneratedProjectFiles(responseText);
+      const knownFolders = new Set(files.filter(f => f.is_folder).map(f => `${f.path}${f.name}/`));
+
+      for (const folder of collectGeneratedFolders(generatedFiles)) {
+        const folderKey = `${folder.path}${folder.name}/`;
+        if (knownFolders.has(folderKey)) continue;
+        await onCreateFile(folder.name, folder.path, true);
+        knownFolders.add(folderKey);
       }
 
-      const generatedFiles = JSON.parse(jsonStr.trim());
       let count = 0;
       for (const file of generatedFiles) {
-        if (file.name && file.content) {
+        if (!file.is_folder && file.name) {
           await onCreateFile(file.name, file.path || "/", false, file.language || "tsx", file.content);
           count++;
         }
@@ -210,20 +218,32 @@ const BuildForgePanel = ({ code, language, files, activeFile, onCreateFile, onUp
     } finally {
       setIsGenerating(false);
     }
-  }, [isGenerating, onCreateFile, toast, projectName]);
+  }, [isGenerating, onCreateFile, toast, projectName, files]);
 
   return (
     <div className="flex flex-col h-full">
       <ScrollArea className="flex-1 p-3" ref={scrollRef}>
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center py-8">
-            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center mb-3 border border-primary/20">
+            <div className="flex flex-col items-center justify-center h-full text-center py-8 px-3">
+              <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3 border border-primary/20 shadow-sm">
               <Rocket className="h-6 w-6 text-primary" />
             </div>
-            <h4 className="font-semibold text-sm mb-1">BuildForge AI</h4>
-            <p className="text-[11px] text-muted-foreground max-w-[220px]">
-              To'liq loyiha yarating. Masalan: "Portfolio site", "E-commerce app", "Dashboard"
-            </p>
+              <h4 className="font-semibold text-sm mb-1">BuildForge AI</h4>
+              <p className="text-[11px] text-muted-foreground max-w-[240px]">
+                Generate complete apps, TSX projects, and Python bots with a preview-ready structure.
+              </p>
+              <div className="grid gap-2 mt-4 w-full max-w-[260px]">
+                {BUILDFORGE_STARTERS.map((starter) => (
+                  <button
+                    key={starter}
+                    type="button"
+                    onClick={() => { setInput(starter); void generateProject(starter); }}
+                    className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-left text-[10px] text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                  >
+                    {starter}
+                  </button>
+                ))}
+              </div>
           </div>
         ) : (
           <div className="space-y-3">
@@ -234,7 +254,7 @@ const BuildForgePanel = ({ code, language, files, activeFile, onCreateFile, onUp
                     {msg.role === "user" ? "U" : <Rocket className="h-3 w-3" />}
                   </AvatarFallback>
                 </Avatar>
-                <div className={cn("flex-1 p-2.5 rounded-xl text-xs", msg.role === "user" ? "bg-primary/15 rounded-tr-sm" : "bg-muted/30 border border-border/30 rounded-tl-sm")}>
+                <div className={cn("flex-1 min-w-0 p-2.5 rounded-xl text-xs", msg.role === "user" ? "bg-primary/15 rounded-tr-sm" : "bg-muted/30 border border-border/30 rounded-tl-sm")}>
                   {msg.role === "assistant" ? (
                     <MarkdownContent content={msg.content} language={language} onApplyCode={(c) => activeFile && onUpdateFileContent(activeFile.id, c)} />
                   ) : (
@@ -256,7 +276,7 @@ const BuildForgePanel = ({ code, language, files, activeFile, onCreateFile, onUp
       </ScrollArea>
       <form onSubmit={(e) => { e.preventDefault(); if (input.trim()) { generateProject(input); setInput(""); } }} className="p-2 border-t border-border/50">
         <div className="flex gap-1.5">
-          <Input value={input} onChange={e => setInput(e.target.value)} placeholder="Loyiha tavsifini yozing..." className="flex-1 h-8 text-xs bg-background/50" disabled={isGenerating} />
+          <Input value={input} onChange={e => setInput(e.target.value)} placeholder="Describe the app you want to generate..." className="flex-1 h-8 text-xs bg-background/50" disabled={isGenerating} />
           <Button type="submit" size="sm" className="h-8 w-8 p-0" disabled={isGenerating || !input.trim()}>
             {isGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Rocket className="h-3.5 w-3.5" />}
           </Button>

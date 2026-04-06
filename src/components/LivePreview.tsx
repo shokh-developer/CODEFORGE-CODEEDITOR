@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Eye, RefreshCw, ExternalLink, Smartphone, Monitor, Tablet, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { buildPreviewHtml } from "@/lib/live-preview";
 
 interface FileItem {
   id: string;
@@ -28,97 +29,46 @@ const viewportSizes: Record<ViewportSize, { width: string; label: string; icon: 
 
 const LivePreview = ({ files, activeFile, isOpen, onToggle }: LivePreviewProps) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const previewUrlRef = useRef<string | null>(null);
   const [viewport, setViewport] = useState<ViewportSize>("desktop");
   const [previewUrl, setPreviewUrl] = useState<string>("");
 
+  const cleanupPreviewUrl = useCallback(() => {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = null;
+    }
+  }, []);
+
   const buildPreview = useCallback(() => {
-    const htmlFile = files.find(f => f.name.endsWith(".html") && !f.is_folder);
-
-    // If no HTML file, try to build a preview from TSX/JSX files
-    if (!htmlFile) {
-      const tsxFiles = files.filter(f => (f.name.endsWith(".tsx") || f.name.endsWith(".jsx")) && !f.is_folder);
-      const cssFiles = files.filter(f => f.name.endsWith(".css") && !f.is_folder);
-      if (tsxFiles.length === 0) return;
-
-      // Build a combined preview from TSX files
-      const allCode = tsxFiles.map(f => f.content).join("\n\n");
-      const cssInject = cssFiles.map(f => `<style>${f.content}</style>`).join("\n");
-      const htmlContent = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
-  ${cssInject}
-  <style>body { margin: 0; font-family: system-ui, sans-serif; }</style>
-</head>
-<body>
-  <div id="root"></div>
-  <script type="text/babel">
-    ${allCode}
-    
-    // Try to find and render the main component
-    const components = [typeof App !== 'undefined' && App, typeof Main !== 'undefined' && Main].filter(Boolean);
-    if (components.length > 0) {
-      ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(components[0]));
-    }
-  </script>
-</body>
-</html>`;
-      const blob = new Blob([htmlContent], { type: "text/html" });
-      const url = URL.createObjectURL(blob);
-      setPreviewUrl(url);
-      return () => URL.revokeObjectURL(url);
+    const previewableFiles = files.filter(f => !f.is_folder && /\.(html|tsx|ts|jsx|js)$/.test(f.name));
+    if (previewableFiles.length === 0) {
+      cleanupPreviewUrl();
+      setPreviewUrl("");
+      return;
     }
 
-    let htmlContent = htmlFile.content;
-
-    // Inject CSS files
-    const cssFiles = files.filter(f => f.name.endsWith(".css") && !f.is_folder);
-    const cssInject = cssFiles.map(f => `<style>/* ${f.name} */\n${f.content}</style>`).join("\n");
-
-    // Inject JS files
-    const jsFiles = files.filter(f => (f.name.endsWith(".js") || f.name.endsWith(".ts")) && !f.is_folder && f.name !== htmlFile.name);
-    const jsInject = jsFiles.map(f => `<script>/* ${f.name} */\n${f.content}</script>`).join("\n");
-
-    // Inject before </head> or at end
-    if (htmlContent.includes("</head>")) {
-      htmlContent = htmlContent.replace("</head>", `${cssInject}\n</head>`);
-    } else {
-      htmlContent = cssInject + htmlContent;
-    }
-
-    if (htmlContent.includes("</body>")) {
-      htmlContent = htmlContent.replace("</body>", `${jsInject}\n</body>`);
-    } else {
-      htmlContent += jsInject;
-    }
-
-    // Add dark theme base styles
-    if (!htmlContent.includes("background-color") && !htmlContent.includes("background:")) {
-      const darkStyles = `<style>
-        body { background-color: #0a0a0f; color: #e2e8f0; font-family: system-ui, -apple-system, sans-serif; margin: 0; }
-        * { box-sizing: border-box; }
-      </style>`;
-      if (htmlContent.includes("<head>")) {
-        htmlContent = htmlContent.replace("<head>", `<head>\n${darkStyles}`);
-      } else {
-        htmlContent = darkStyles + htmlContent;
-      }
-    }
-
+    const htmlContent = buildPreviewHtml(files);
     const blob = new Blob([htmlContent], { type: "text/html" });
     const url = URL.createObjectURL(blob);
+    cleanupPreviewUrl();
+    previewUrlRef.current = url;
     setPreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [files]);
+    return () => {
+      if (previewUrlRef.current === url) {
+        URL.revokeObjectURL(url);
+        previewUrlRef.current = null;
+      }
+    };
+  }, [files, cleanupPreviewUrl]);
 
   useEffect(() => {
-    if (isOpen) buildPreview();
-  }, [isOpen, files, buildPreview]);
+    if (!isOpen) return;
+    const cleanup = buildPreview();
+    return () => cleanup?.();
+  }, [isOpen, buildPreview]);
+
+  useEffect(() => () => cleanupPreviewUrl(), [cleanupPreviewUrl]);
 
   const refresh = () => buildPreview();
 
@@ -128,7 +78,7 @@ const LivePreview = ({ files, activeFile, isOpen, onToggle }: LivePreviewProps) 
 
   if (!isOpen) return null;
 
-  const hasPreviewable = files.some(f => (f.name.endsWith(".html") || f.name.endsWith(".tsx") || f.name.endsWith(".jsx")) && !f.is_folder);
+  const hasPreviewable = files.some(f => /\.(html|tsx|ts|jsx|js)$/.test(f.name) && !f.is_folder);
 
   return (
     <div className="flex flex-col h-full bg-background border-l border-border">
