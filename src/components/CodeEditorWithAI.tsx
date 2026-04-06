@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+let monacoTypesConfigured = false;
+
 interface FileItem {
   id: string;
   name: string;
@@ -50,6 +52,8 @@ const CodeEditorWithAI = ({
   const monacoRef = useRef<any>(null);
   const decorationsRef = useRef<any[]>([]);
   const { toast } = useToast();
+  const editorLanguage = language === "tsx" ? "typescript" : language === "jsx" ? "javascript" : language;
+  const editorPath = `/workspace/current.${language === "tsx" ? "tsx" : language === "jsx" ? "jsx" : language === "typescript" ? "ts" : language === "javascript" ? "js" : language === "python" ? "py" : "txt"}`;
 
   const {
     isLoading,
@@ -189,6 +193,54 @@ const CodeEditorWithAI = ({
     editorRef.current = editor;
     monacoRef.current = monaco;
 
+    if (!monacoTypesConfigured) {
+      const compilerOptions = {
+        allowJs: true,
+        allowNonTsExtensions: true,
+        esModuleInterop: true,
+        resolveJsonModule: true,
+        jsx: monaco.languages.typescript.JsxEmit.ReactJSX,
+        module: monaco.languages.typescript.ModuleKind.ESNext,
+        moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+        target: monaco.languages.typescript.ScriptTarget.ES2020,
+      };
+
+      monaco.languages.typescript.typescriptDefaults.setCompilerOptions(compilerOptions);
+      monaco.languages.typescript.javascriptDefaults.setCompilerOptions(compilerOptions);
+
+      const sharedTypes = `
+declare module "*";
+declare namespace JSX {
+  interface IntrinsicElements {
+    [elemName: string]: any;
+  }
+}
+declare module "react" {
+  const React: any;
+  export default React;
+  export const Fragment: any;
+  export const useState: any;
+  export const useEffect: any;
+  export const useMemo: any;
+  export const useCallback: any;
+  export const useRef: any;
+  export const useContext: any;
+}
+declare module "react/jsx-runtime" {
+  export const Fragment: any;
+  export const jsx: any;
+  export const jsxs: any;
+}
+declare module "react-dom/client" {
+  export function createRoot(container: Element | DocumentFragment): { render(node: any): void };
+}
+`;
+
+      monaco.languages.typescript.typescriptDefaults.addExtraLib(sharedTypes, "file:///types/buildforge-react.d.ts");
+      monaco.languages.typescript.javascriptDefaults.addExtraLib(sharedTypes, "file:///types/buildforge-react-js.d.ts");
+      monacoTypesConfigured = true;
+    }
+
     // Tab tugmasini qo'lga ol
     editor.addCommand(monaco.KeyCode.Tab, () => {
       if (currentSuggestion) {
@@ -318,7 +370,8 @@ const CodeEditorWithAI = ({
       <div className="h-full w-full rounded-lg overflow-hidden border border-border">
         <Editor
           height="100%"
-          language={language}
+          language={editorLanguage}
+          path={editorPath}
           value={code}
           onChange={handleChange}
           onMount={handleEditorDidMount}

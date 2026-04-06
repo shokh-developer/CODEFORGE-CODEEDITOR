@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { normalizeGeneratedProjectFiles } from "@/lib/ai-json";
 import {
   Bot, Send, X, Sparkles, Loader2, Code, Lightbulb, Bug, Zap,
   FileCode, FolderPlus, FilePlus, Wand2, Copy, Check, RefreshCw,
@@ -717,20 +718,11 @@ Guidelines:
       if (data?.error) throw new Error(data.error);
 
       const responseText = data?.response || "[]";
-      let jsonStr = responseText;
-      
-      const jsonMatch = responseText.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
-      if (jsonMatch) jsonStr = jsonMatch[1];
-      if (!jsonStr.trim().startsWith("[")) {
-        const arrayMatch = responseText.match(/\[[\s\S]*\]/);
-        if (arrayMatch) jsonStr = arrayMatch[0];
-      }
-
-      const generatedFiles = JSON.parse(jsonStr.trim());
+      const generatedFiles = normalizeGeneratedProjectFiles(responseText);
       let createdCount = 0;
 
       for (const file of generatedFiles) {
-        if (file.name && file.content) {
+        if (!file.is_folder && file.name) {
           await onCreateFile(file.name, file.path || "/", false, file.language || "tsx", file.content);
           createdCount++;
         }
