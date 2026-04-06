@@ -157,8 +157,8 @@ const createBundledPreviewHtml = (files: PreviewFileItem[]) => {
     const errorNode = document.getElementById("__preview_error__");
 
     const normalizePath = (value) => {
-      const normalized = `/${value}`.replace(/\\/+/g, "/");
-      return normalized.startsWith("/") ? normalized : `/${normalized}`;
+      const normalized = ("/" + value).replace(/\\/+/g, "/");
+      return normalized.startsWith("/") ? normalized : "/" + normalized;
     };
 
     const dirname = (value) => value.slice(0, value.lastIndexOf("/") + 1);
@@ -167,29 +167,29 @@ const createBundledPreviewHtml = (files: PreviewFileItem[]) => {
       const normalized = normalizePath(base);
       return [
         normalized,
-        `${normalized}.tsx`,
-        `${normalized}.ts`,
-        `${normalized}.jsx`,
-        `${normalized}.js`,
-        `${normalized}.json`,
-        `${normalized}.css`,
-        `${normalized}/index.tsx`,
-        `${normalized}/index.ts`,
-        `${normalized}/index.jsx`,
-        `${normalized}/index.js`,
+        normalized + ".tsx",
+        normalized + ".ts",
+        normalized + ".jsx",
+        normalized + ".js",
+        normalized + ".json",
+        normalized + ".css",
+        normalized + "/index.tsx",
+        normalized + "/index.ts",
+        normalized + "/index.jsx",
+        normalized + "/index.js",
       ];
     };
 
     const resolveLocalPath = (specifier, importer) => {
       if (specifier.startsWith("@/")) {
-        return withCandidates(`/src/${specifier.slice(2)}`).find((candidate) => files[candidate]) || normalizePath(`/src/${specifier.slice(2)}`);
+        return withCandidates("/src/" + specifier.slice(2)).find((candidate) => files[candidate]) || normalizePath("/src/" + specifier.slice(2));
       }
 
       if (specifier.startsWith("/")) {
         return withCandidates(specifier).find((candidate) => files[candidate]) || normalizePath(specifier);
       }
 
-      const base = normalizePath(`${dirname(importer || entryPath)}${specifier}`);
+      const base = normalizePath(dirname(importer || entryPath) + specifier);
       return withCandidates(base).find((candidate) => files[candidate]) || base;
     };
 
@@ -204,7 +204,7 @@ const createBundledPreviewHtml = (files: PreviewFileItem[]) => {
 
     const showError = (error) => {
       errorNode.style.display = "block";
-      errorNode.textContent = error instanceof Error ? `${error.message}\n\n${error.stack || ""}` : String(error);
+      errorNode.textContent = error instanceof Error ? (error.message + "\n\n" + (error.stack || "")) : String(error);
       console.error(error);
     };
 
@@ -232,14 +232,14 @@ const createBundledPreviewHtml = (files: PreviewFileItem[]) => {
 
             if (typeof source !== "string") {
               return {
-                contents: `throw new Error(${JSON.stringify("Missing file in preview: ")} + ${JSON.stringify(args.path)});`,
+                contents: "throw new Error(" + JSON.stringify("Missing file in preview: " + args.path) + ");",
                 loader: "js",
               };
             }
 
             if (args.path.endsWith(".css")) {
               return {
-                contents: `const style = document.createElement("style"); style.textContent = ${safeSerialize("__CSS_PLACEHOLDER__")}.replace("__CSS_PLACEHOLDER__", ${safeSerialize(source)}); document.head.appendChild(style); export default {};`,
+                contents: "const style = document.createElement(\"style\"); style.textContent = " + JSON.stringify(source) + "; document.head.appendChild(style); export default {};",
                 loader: "js",
               };
             }
