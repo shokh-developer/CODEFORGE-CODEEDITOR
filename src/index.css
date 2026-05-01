@@ -70,149 +70,92 @@
 }
 
 @layer components {
-  /* Futuristic gradient background */
+  /* Tokyo Night flat background (no gradient, no glow) */
   .futuristic-bg {
-    background: linear-gradient(
-      135deg,
-      hsl(var(--gradient-start)) 0%,
-      hsl(var(--gradient-mid)) 40%,
-      hsl(var(--gradient-end)) 100%
-    );
+    background: hsl(var(--background));
     position: relative;
   }
 
-  .futuristic-bg::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-    background-size: 60px 60px;
-    pointer-events: none;
-    z-index: 0;
-  }
-
+  .futuristic-bg::before,
   .futuristic-bg::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(ellipse at center, transparent 40%, hsl(var(--background) / 0.6) 100%);
-    pointer-events: none;
-    z-index: 0;
+    content: none;
   }
 
-  /* Glassmorphism cards */
-  .glass-card {
-    background: hsl(var(--card) / 0.4);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border: 1px solid hsl(var(--primary) / 0.1);
-    box-shadow:
-      0 8px 32px -8px hsl(var(--background) / 0.6),
-      inset 0 1px 0 hsl(var(--foreground) / 0.05);
-  }
-
+  /* Flat solid cards (no glassmorphism) */
+  .glass-card,
   .glass-card-hover {
-    background: hsl(var(--card) / 0.4);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border: 1px solid hsl(var(--primary) / 0.1);
-    box-shadow:
-      0 8px 32px -8px hsl(var(--background) / 0.6),
-      inset 0 1px 0 hsl(var(--foreground) / 0.05);
-    transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
   }
 
   .glass-card-hover:hover {
-    border-color: hsl(var(--primary) / 0.3);
-    box-shadow:
-      0 12px 40px -8px hsl(var(--primary) / 0.15),
-      0 0 60px -20px hsl(var(--primary) / 0.1),
-      inset 0 1px 0 hsl(var(--foreground) / 0.08);
-    transform: translateY(-2px);
+    border-color: hsl(var(--primary) / 0.5);
+    background: hsl(var(--secondary));
+    transform: none;
+    box-shadow: none;
   }
 
-  /* Gradient text */
+  /* Plain text — no gradient */
   .gradient-text {
-    @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--glow-secondary)), hsl(var(--primary)));
+    color: hsl(var(--primary));
+    background: none;
   }
 
-  /* Glow effects */
-  .glow-sm {
-    box-shadow: 0 0 20px -4px hsl(var(--primary) / 0.3);
-  }
-
-  .glow-md {
-    box-shadow: 0 0 40px -8px hsl(var(--primary) / 0.35);
-  }
-
+  /* Disable glow effects */
+  .glow-sm,
+  .glow-md,
   .glow-lg {
-    box-shadow: 0 0 80px -16px hsl(var(--primary) / 0.3);
+    box-shadow: none;
   }
 
   .glow-text {
-    text-shadow: 0 0 20px hsl(var(--primary) / 0.5), 0 0 40px hsl(var(--primary) / 0.2);
+    text-shadow: none;
   }
 
-  /* Futuristic button */
+  /* Standard button (no futuristic gradient) */
   .btn-futuristic {
-    background: linear-gradient(135deg, hsl(168 80% 45%), hsl(150 70% 40%));
-    color: hsl(220 40% 6%);
-    font-weight: 600;
-    border-radius: 9999px;
-    transition: all 0.25s cubic-bezier(0.23, 1, 0.32, 1);
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    font-weight: 500;
+    border-radius: var(--radius);
+    transition: background-color 0.15s ease;
     position: relative;
     overflow: hidden;
   }
 
   .btn-futuristic::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, transparent, hsl(0 0% 100% / 0.15), transparent);
-    opacity: 0;
-    transition: opacity 0.25s ease;
+    content: none;
   }
 
   .btn-futuristic:hover {
-    transform: scale(1.03);
-    box-shadow: 0 0 30px -5px hsl(168 80% 50% / 0.4), 0 0 60px -15px hsl(168 80% 50% / 0.2);
+    background: hsl(var(--primary) / 0.9);
+    transform: none;
+    box-shadow: none;
   }
 
-  .btn-futuristic:hover::before {
-    opacity: 1;
-  }
-
-  /* Glow input */
+  /* Standard input */
   .glow-input {
-    background: hsl(var(--background) / 0.6);
+    background: hsl(var(--input));
     border: 1px solid hsl(var(--border));
-    border-radius: 0.75rem;
-    transition: all 0.25s ease;
+    border-radius: var(--radius);
+    transition: border-color 0.15s ease;
   }
 
   .glow-input:focus {
-    border-color: hsl(var(--primary) / 0.5);
-    box-shadow: 0 0 20px -5px hsl(var(--primary) / 0.3), inset 0 0 8px hsl(var(--primary) / 0.05);
+    border-color: hsl(var(--primary));
+    box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
     outline: none;
   }
 
-  /* Floating orbs */
-  .orb {
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(80px);
-    pointer-events: none;
-  }
-
-  .orb-primary {
-    background: hsl(var(--primary) / 0.08);
-  }
-
+  /* Floating orbs disabled */
+  .orb,
+  .orb-primary,
   .orb-secondary {
-    background: hsl(var(--glow-secondary) / 0.06);
+    display: none;
   }
 }
 
