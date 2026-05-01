@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&family=Orbitron:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -12,42 +12,43 @@
   [data-theme="dracula"],
   [data-theme="one-dark-pro"],
   [data-theme="shades-of-purple"] {
-    --background: 220 40% 6%;
-    --foreground: 180 20% 95%;
-    --card: 200 30% 10%;
-    --card-foreground: 180 20% 95%;
-    --popover: 200 30% 10%;
-    --popover-foreground: 180 20% 95%;
-    --primary: 168 80% 50%;
-    --primary-foreground: 220 40% 6%;
-    --secondary: 200 25% 14%;
-    --secondary-foreground: 180 20% 85%;
-    --muted: 200 20% 12%;
-    --muted-foreground: 200 15% 50%;
-    --accent: 168 80% 50%;
-    --accent-foreground: 220 40% 6%;
-    --destructive: 0 72% 55%;
+    /* Classic Tokyo Night palette */
+    --background: 230 24% 11%;        /* #1a1b26 */
+    --foreground: 229 31% 78%;        /* #a9b1d6 */
+    --card: 232 22% 14%;              /* #1f2335 */
+    --card-foreground: 229 31% 78%;
+    --popover: 232 22% 14%;
+    --popover-foreground: 229 31% 78%;
+    --primary: 217 92% 70%;           /* #7aa2f7 blue */
+    --primary-foreground: 230 24% 11%;
+    --secondary: 233 20% 19%;         /* #292e42 */
+    --secondary-foreground: 229 31% 85%;
+    --muted: 233 18% 17%;
+    --muted-foreground: 229 14% 56%;  /* #787c99 */
+    --accent: 261 64% 73%;            /* #bb9af7 purple */
+    --accent-foreground: 230 24% 11%;
+    --destructive: 349 71% 65%;       /* #f7768e */
     --destructive-foreground: 0 0% 100%;
-    --border: 200 20% 16%;
-    --input: 200 20% 12%;
-    --ring: 168 80% 50%;
-    --radius: 1rem;
+    --border: 233 18% 20%;
+    --input: 233 18% 17%;
+    --ring: 217 92% 70%;
+    --radius: 0.5rem;
 
-    --sidebar-background: 220 35% 7%;
-    --sidebar-foreground: 180 20% 90%;
-    --sidebar-primary: 168 80% 50%;
-    --sidebar-primary-foreground: 220 40% 6%;
-    --sidebar-accent: 200 25% 14%;
-    --sidebar-accent-foreground: 180 20% 90%;
-    --sidebar-border: 200 20% 14%;
-    --sidebar-ring: 168 80% 50%;
+    --sidebar-background: 232 25% 9%;
+    --sidebar-foreground: 229 31% 78%;
+    --sidebar-primary: 217 92% 70%;
+    --sidebar-primary-foreground: 230 24% 11%;
+    --sidebar-accent: 233 20% 17%;
+    --sidebar-accent-foreground: 229 31% 85%;
+    --sidebar-border: 233 18% 18%;
+    --sidebar-ring: 217 92% 70%;
 
-    /* Futuristic extras */
-    --gradient-start: 220 50% 8%;
-    --gradient-mid: 195 40% 10%;
-    --gradient-end: 168 35% 12%;
-    --glow-primary: 168 80% 50%;
-    --glow-secondary: 195 70% 45%;
+    /* Legacy tokens (kept for backwards compatibility, mapped to Tokyo Night) */
+    --gradient-start: 230 24% 11%;
+    --gradient-mid: 232 22% 14%;
+    --gradient-end: 233 20% 19%;
+    --glow-primary: 217 92% 70%;
+    --glow-secondary: 261 64% 73%;
   }
 }
 
