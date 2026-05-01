@@ -586,18 +586,17 @@ const WorkspacePanel = ({
   if (!isOpen) return null;
 
   return (
-    <div className="w-full h-full flex flex-col bg-card/95 backdrop-blur-sm border-l border-border overflow-hidden">
-      {/* Tab bar */}
-      <div className="flex h-9 border-b border-border flex-shrink-0 bg-muted/20">
+    <div className="w-full h-full flex flex-col bg-card border-l border-border overflow-hidden">
+      <div className="flex h-10 border-b border-border flex-shrink-0 bg-card">
         {TABS.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              "flex-1 flex items-center justify-center gap-1.5 text-[11px] font-medium transition-colors border-b-2",
+              "flex-1 flex items-center justify-center gap-1.5 text-[11px] font-medium transition-colors border-b",
               activeTab === tab.id
-                ? "border-primary text-primary bg-primary/5"
-                : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                ? "border-primary text-foreground bg-muted"
+                : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
             )}
           >
             <tab.icon className="h-3.5 w-3.5" />
