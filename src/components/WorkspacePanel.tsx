@@ -389,14 +389,12 @@ const CodeForgePanel = ({ code, language, files, activeFile, onCreateFile, onUpd
     <div className="flex flex-col h-full">
       <ScrollArea className="flex-1 p-3" ref={scrollRef}>
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center py-8">
-            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center mb-3 border border-primary/20">
+          <div className="flex flex-col items-center justify-center h-full text-center py-8 px-3">
+            <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center mb-3 border border-border">
               <Sparkles className="h-6 w-6 text-primary" />
             </div>
             <h4 className="font-semibold text-sm mb-1">CodeForge AI</h4>
-            <p className="text-[11px] text-muted-foreground max-w-[220px]">
-              Kod yozing, xatolarni toping, optimizatsiya qiling. Savolingizni yozing.
-            </p>
+            <p className="text-[11px] text-muted-foreground max-w-[220px]">Ask about the current file, fix bugs, or refactor code.</p>
             <div className="grid grid-cols-2 gap-1.5 mt-4 w-full max-w-[240px]">
               {[
                 { icon: Code, label: "Explain code", prompt: "Explain this code in detail" },
@@ -405,7 +403,7 @@ const CodeForgePanel = ({ code, language, files, activeFile, onCreateFile, onUpd
                 { icon: Sparkles, label: "Optimize", prompt: "Optimize this code" },
               ].map((item, i) => (
                 <button key={i} onClick={() => sendMessage(item.prompt)}
-                  className="flex items-center gap-1.5 p-2 rounded-lg bg-muted/30 hover:bg-muted/50 border border-border/30 text-[10px] transition-colors">
+                  className="flex items-center gap-1.5 p-2 rounded-md bg-background hover:bg-muted border border-border text-[10px] transition-colors">
                   <item.icon className="h-3 w-3 text-muted-foreground" />
                   <span>{item.label}</span>
                 </button>
@@ -422,7 +420,7 @@ const CodeForgePanel = ({ code, language, files, activeFile, onCreateFile, onUpd
                       {msg.role === "user" ? "U" : <Bot className="h-3 w-3" />}
                     </AvatarFallback>
                   </Avatar>
-                  <div className={cn("flex-1 p-2.5 rounded-xl text-xs min-w-0", msg.role === "user" ? "bg-primary/15 rounded-tr-sm" : "bg-muted/30 border border-border/30 rounded-tl-sm")}>
+                  <div className={cn("flex-1 p-2.5 rounded-md text-xs min-w-0", msg.role === "user" ? "bg-secondary" : "bg-muted border border-border")}>
                     {msg.role === "assistant" ? (
                       <MarkdownContent content={msg.content} language={language} onApplyCode={(c) => activeFile && onUpdateFileContent(activeFile.id, c)} />
                     ) : (
@@ -446,7 +444,7 @@ const CodeForgePanel = ({ code, language, files, activeFile, onCreateFile, onUpd
             {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
               <div className="flex gap-2">
                 <Avatar className="h-6 w-6"><AvatarFallback className="bg-accent/20"><Loader2 className="h-3 w-3 animate-spin" /></AvatarFallback></Avatar>
-                <div className="p-2.5 rounded-xl bg-muted/30 border border-border/30 rounded-tl-sm">
+                  <div className="p-2.5 rounded-md bg-muted border border-border">
                   <div className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin text-primary" /><span className="text-[11px] text-muted-foreground">Thinking...</span></div>
                 </div>
               </div>
@@ -454,9 +452,9 @@ const CodeForgePanel = ({ code, language, files, activeFile, onCreateFile, onUpd
           </div>
         )}
       </ScrollArea>
-      <form onSubmit={(e) => { e.preventDefault(); if (input.trim()) { sendMessage(input); setInput(""); } }} className="p-2 border-t border-border/50">
+      <form onSubmit={(e) => { e.preventDefault(); if (input.trim()) { sendMessage(input); setInput(""); } }} className="p-2 border-t border-border">
         <div className="flex gap-1.5">
-          <Input value={input} onChange={e => setInput(e.target.value)} placeholder="Savolingizni yozing..." className="flex-1 h-8 text-xs bg-background/50" disabled={isLoading} />
+          <Input value={input} onChange={e => setInput(e.target.value)} placeholder="Ask CodeForge AI..." className="flex-1 h-8 text-xs bg-background" disabled={isLoading} />
           <Button type="submit" size="sm" className="h-8 w-8 p-0" disabled={isLoading || !input.trim()}>
             {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
           </Button>
