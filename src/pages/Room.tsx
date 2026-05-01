@@ -40,7 +40,7 @@ const Room = () => {
   const [terminalOpen, setTerminalOpen] = useState(true);
   const [localContent, setLocalContent] = useState("");
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [panelOpen, setPanelOpen] = useState(true);
+  const [panelOpen, setPanelOpen] = useState(false);
 
   useEffect(() => {
     if (isMobile) setSidebarOpen(false);
@@ -280,7 +280,7 @@ const Room = () => {
 
         {/* Workspace Panel (BuildForge AI / CodeForge AI / Team Chat) */}
         {panelOpen && (
-          <div className="w-[380px] h-full flex-shrink-0">
+          <div className="w-[360px] h-full flex-shrink-0 border-l border-border bg-card">
             <WorkspacePanel
               isOpen={panelOpen}
               onToggle={() => setPanelOpen(!panelOpen)}
