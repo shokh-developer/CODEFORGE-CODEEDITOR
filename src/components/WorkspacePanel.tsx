@@ -110,7 +110,7 @@ const CodeBlock = ({ code, lang, onApply }: { code: string; lang: string; onAppl
 // ==================== MARKDOWN RENDERER ====================
 
 const MarkdownContent = ({ content, language, onApplyCode }: { content: string; language: string; onApplyCode: (c: string) => void }) => (
-  <div className="prose prose-sm prose-invert max-w-none text-xs leading-relaxed">
+  <div className="prose prose-sm prose-invert max-w-none text-xs leading-relaxed break-words [overflow-wrap:anywhere] [word-break:break-word]">
     <ReactMarkdown
       components={{
         code({ className, children }) {
@@ -252,11 +252,11 @@ const BuildForgePanel = ({ code, language, files, activeFile, onCreateFile, onUp
                     {msg.role === "user" ? "U" : <Rocket className="h-3 w-3" />}
                   </AvatarFallback>
                 </Avatar>
-                <div className={cn("flex-1 min-w-0 p-2.5 rounded-md text-xs", msg.role === "user" ? "bg-secondary" : "bg-muted border border-border")}>
+                <div className={cn("flex-1 min-w-0 max-w-full overflow-hidden p-2.5 rounded-md text-xs", msg.role === "user" ? "bg-secondary" : "bg-muted border border-border")}>
                   {msg.role === "assistant" ? (
                     <MarkdownContent content={msg.content} language={language} onApplyCode={(c) => activeFile && onUpdateFileContent(activeFile.id, c)} />
                   ) : (
-                    <span className="whitespace-pre-wrap">{msg.content}</span>
+                    <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{msg.content}</span>
                   )}
                 </div>
               </div>
@@ -420,11 +420,11 @@ const CodeForgePanel = ({ code, language, files, activeFile, onCreateFile, onUpd
                       {msg.role === "user" ? "U" : <Bot className="h-3 w-3" />}
                     </AvatarFallback>
                   </Avatar>
-                  <div className={cn("flex-1 p-2.5 rounded-md text-xs min-w-0", msg.role === "user" ? "bg-secondary" : "bg-muted border border-border")}>
+                  <div className={cn("flex-1 p-2.5 rounded-md text-xs min-w-0 max-w-full overflow-hidden", msg.role === "user" ? "bg-secondary" : "bg-muted border border-border")}>
                     {msg.role === "assistant" ? (
                       <MarkdownContent content={msg.content} language={language} onApplyCode={(c) => activeFile && onUpdateFileContent(activeFile.id, c)} />
                     ) : (
-                      <span className="whitespace-pre-wrap">{msg.content}</span>
+                      <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{msg.content}</span>
                     )}
                   </div>
                 </div>

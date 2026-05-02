@@ -314,7 +314,7 @@ const MessageContent = memo(({ content, language, onApplyCode }: {
   onApplyCode: (code: string) => void;
 }) => {
   return (
-    <div className="prose prose-sm prose-invert max-w-none [&_pre]:my-2 [&_p]:my-1 text-[12px] leading-relaxed">
+    <div className="prose prose-sm prose-invert max-w-none [&_pre]:my-2 [&_p]:my-1 text-[12px] leading-relaxed break-words [overflow-wrap:anywhere] [word-break:break-word]">
       <ReactMarkdown
         components={{
           code({ className, children, ...props }) {
@@ -1131,7 +1131,7 @@ Guidelines:
                                 onApplyCode={(code) => activeFile && onUpdateFileContent(activeFile.id, code)}
                               />
                             ) : (
-                              <span className="whitespace-pre-wrap">{msg.content}</span>
+                              <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{msg.content}</span>
                             )}
                           </div>
 
