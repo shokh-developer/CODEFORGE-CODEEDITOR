@@ -145,15 +145,20 @@ const Index = () => {
         >
           <motion.h1
             variants={item}
-            className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground mb-4"
+            className="text-5xl sm:text-7xl font-bold tracking-tight mb-3 bg-gradient-to-r from-[#7aa2f7] via-[#bb9af7] to-[#f7768e] bg-clip-text text-transparent"
           >
             CodeForge
           </motion.h1>
+          <motion.p variants={item} className="text-xs text-muted-foreground mb-4">
+            by <span className="text-primary font-medium">shokh</span>
+          </motion.p>
           <motion.p
             variants={item}
-            className="text-base sm:text-lg text-muted-foreground max-w-xl mx-auto"
+            className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto"
           >
-            Real-time collaborative coding platform with AI assistance and 10+ supported languages.
+            Write, run, and collaborate on code in real time with your team.
+            <br />
+            C++, Python, JavaScript, and 10+ languages.
           </motion.p>
         </motion.div>
 
@@ -183,7 +188,11 @@ const Index = () => {
               className="h-10 text-sm"
               onKeyDown={(e) => e.key === "Enter" && handleCreateRoom()}
             />
-            <Button className="w-full h-10 text-sm gap-2" onClick={handleCreateRoom} disabled={isCreating}>
+            <Button
+              className="w-full h-10 text-sm gap-2 bg-gradient-to-r from-[#7aa2f7] to-[#bb9af7] hover:from-[#7aa2f7]/90 hover:to-[#bb9af7]/90 text-white border-0 shadow-md shadow-primary/20"
+              onClick={handleCreateRoom}
+              disabled={isCreating}
+            >
               {isCreating ? "Creating..." : "Create Room"}
               <ArrowRight className="h-4 w-4" />
             </Button>
@@ -207,8 +216,11 @@ const Index = () => {
               className="h-10 text-sm"
               onKeyDown={(e) => e.key === "Enter" && handleJoinRoom()}
             />
-            <Button variant="secondary" className="w-full h-10 text-sm gap-2" onClick={handleJoinRoom}>
-              Join Room <ArrowRight className="h-4 w-4" />
+            <Button
+              className="w-full h-10 text-sm gap-2 bg-[#f7768e] hover:bg-[#f7768e]/90 text-white border-0 shadow-md shadow-[#f7768e]/20"
+              onClick={handleJoinRoom}
+            >
+              Join <ArrowRight className="h-4 w-4" />
             </Button>
           </motion.div>
         </motion.div>
