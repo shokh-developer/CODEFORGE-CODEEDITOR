@@ -22,6 +22,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus, vs } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "next-themes";
+import { useCredits } from "@/hooks/useCredits";
 
 // ==================== TYPES & INTERFACES ====================
 
@@ -953,9 +954,10 @@ Guidelines:
                       {selectedModel.name}
                     </Badge>
                   </h3>
-                  <p className="text-[9px] text-muted-foreground">/generate to create projects • {messages.length} messages</p>
+                  <p className="text-[9px] text-muted-foreground">50 credits/msg • {messages.length} messages</p>
                 </div>
               </div>
+              <CreditBadge />
               
               <div className="flex items-center gap-0.5">
                 <Tooltip>
