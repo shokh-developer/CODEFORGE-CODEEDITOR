@@ -137,6 +137,27 @@ serve(async (req) => {
       );
     }
 
+    // --- Credit deduction (50 per request) ---
+    const adminClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+    const { data: creditResult, error: creditErr } = await adminClient.rpc("consume_credits", {
+      _user_id: userRes.user.id,
+      _amount: 50,
+    });
+    if (creditErr) {
+      console.error("consume_credits error:", creditErr);
+    } else if (creditResult && (creditResult as any).ok === false) {
+      return new Response(
+        JSON.stringify({
+          error: `Kunlik credit limitingiz tugadi. Balans: ${(creditResult as any).balance}/${(creditResult as any).daily_limit}. Ertaga yangilanadi yoki planni yangilang.`,
+          credits: creditResult,
+        }),
+        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { prompt, code, language, messages: chatHistory, mode } = await req.json();
     const isProjectMode = mode === "generate-project";
 
