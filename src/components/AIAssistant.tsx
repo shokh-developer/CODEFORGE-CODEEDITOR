@@ -219,28 +219,84 @@ const useLocalStorage = <T,>(key: string, initialValue: T): [T, (value: T) => vo
 };
 
 const useConversations = (projectId?: string) => {
-  const [conversations, setConversations] = useLocalStorage<Conversation[]>("ai-conversations", []);
-  
-  const saveConversation = useCallback((conversation: Conversation) => {
-    const updated = [...conversations];
-    const index = updated.findIndex(c => c.id === conversation.id);
-    if (index >= 0) {
-      updated[index] = conversation;
-    } else {
-      updated.unshift(conversation);
-    }
-    setConversations(updated);
-  }, [conversations, setConversations]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
 
-  const deleteConversation = useCallback((id: string) => {
-    setConversations(conversations.filter(c => c.id !== id));
-  }, [conversations, setConversations]);
+  const loadConversations = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data: convs } = await supabase
+      .from("ai_conversations" as any)
+      .select("id, title, project_id, created_at, updated_at")
+      .eq("user_id", user.id)
+      .order("updated_at", { ascending: false });
+    if (!convs) return;
+    setConversations(
+      (convs as any[]).map(c => ({
+        id: c.id,
+        title: c.title,
+        messages: [],
+        projectId: c.project_id || undefined,
+        createdAt: new Date(c.created_at),
+        updatedAt: new Date(c.updated_at),
+      }))
+    );
+  }, []);
+
+  useEffect(() => { loadConversations(); }, [loadConversations]);
+
+  const createConversation = useCallback(async (title: string): Promise<string | null> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    const { data, error } = await supabase
+      .from("ai_conversations" as any)
+      .insert({ user_id: user.id, title: title.slice(0, 80), project_id: projectId } as any)
+      .select("id")
+      .single();
+    if (error || !data) return null;
+    await loadConversations();
+    return (data as any).id;
+  }, [projectId, loadConversations]);
+
+  const persistMessage = useCallback(async (conversationId: string, role: string, content: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from("ai_messages" as any).insert({
+      conversation_id: conversationId,
+      user_id: user.id,
+      role,
+      content,
+    } as any);
+    await supabase
+      .from("ai_conversations" as any)
+      .update({ updated_at: new Date().toISOString() } as any)
+      .eq("id", conversationId);
+  }, []);
+
+  const loadMessages = useCallback(async (conversationId: string): Promise<Message[]> => {
+    const { data } = await supabase
+      .from("ai_messages" as any)
+      .select("id, role, content, created_at")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: true });
+    if (!data) return [];
+    return (data as any[]).map(m => ({
+      id: m.id,
+      role: m.role,
+      content: m.content,
+      timestamp: new Date(m.created_at),
+    }));
+  }, []);
+
+  const deleteConversation = useCallback(async (id: string) => {
+    await supabase.from("ai_conversations" as any).delete().eq("id", id);
+    await loadConversations();
+  }, [loadConversations]);
 
   const getProjectConversations = useCallback(() => {
-    return conversations.filter(c => c.projectId === projectId);
+    return conversations.filter(c => !projectId || c.projectId === projectId);
   }, [conversations, projectId]);
 
-  return { conversations, saveConversation, deleteConversation, getProjectConversations };
+  return { conversations, createConversation, persistMessage, loadMessages, deleteConversation, getProjectConversations, reload: loadConversations };
 };
 
 // ==================== COMPONENTS ====================
