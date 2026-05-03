@@ -574,8 +574,10 @@ const AIAssistant = ({
     }
 
     // Create new conversation if needed
-    if (!currentConversationId) {
-      setCurrentConversationId(generateId());
+    let convId = currentConversationId;
+    if (!convId) {
+      convId = await createConversation(prompt.slice(0, 50));
+      if (convId) setCurrentConversationId(convId);
     }
 
     const userMessage: Message = {
@@ -584,6 +586,7 @@ const AIAssistant = ({
       content: prompt,
       timestamp: new Date(),
     };
+    if (convId) await persistMessage(convId, "user", prompt);
     
     setMessages(prev => [...prev, userMessage]);
     setInput("");
