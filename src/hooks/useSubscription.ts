@@ -1,52 +1,51 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+export type PlanType = "free" | "pro" | "team" | "enterprise";
+
 export interface SubscriptionState {
   subscribed: boolean;
-  productId: string | null;
-  subscriptionEnd: string | null;
+  plan: PlanType;
+  expiresAt: string | null;
   loading: boolean;
 }
 
-// Update these with your actual Stripe product/price IDs
 export const TIERS = {
-  pro: {
-    price_id: "price_PRO_MONTHLY", // Replace with real Stripe price ID
-    product_id: "prod_PRO", // Replace with real Stripe product ID
-    name: "Pro",
-    price: 9.99,
-  },
-  team: {
-    price_id: "price_TEAM_MONTHLY", // Replace with real Stripe price ID
-    product_id: "prod_TEAM", // Replace with real Stripe product ID
-    name: "Team",
-    price: 29.99,
-  },
+  pro: { price_id: "price_PRO_MONTHLY", product_id: "prod_PRO", name: "Pro", price: 9.99 },
+  team: { price_id: "price_TEAM_MONTHLY", product_id: "prod_TEAM", name: "Team", price: 29.99 },
 } as const;
 
 export function useSubscription() {
   const [state, setState] = useState<SubscriptionState>({
     subscribed: false,
-    productId: null,
-    subscriptionEnd: null,
+    plan: "free",
+    expiresAt: null,
     loading: true,
   });
 
   const checkSubscription = useCallback(async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        setState({ subscribed: false, productId: null, subscriptionEnd: null, loading: false });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setState({ subscribed: false, plan: "free", expiresAt: null, loading: false });
         return;
       }
 
-      const { data, error } = await supabase.functions.invoke("check-subscription");
-      if (error) throw error;
+      const { data } = await supabase
+        .from("user_subscriptions" as any)
+        .select("plan, expires_at")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      const plan = ((data as any)?.plan as PlanType) || "free";
+      const expiresAt = (data as any)?.expires_at || null;
+      const stillValid = !expiresAt || new Date(expiresAt) > new Date();
+      const effectivePlan: PlanType = stillValid ? plan : "free";
 
       setState({
-        subscribed: data.subscribed || false,
-        productId: data.product_id || null,
-        subscriptionEnd: data.subscription_end || null,
+        subscribed: effectivePlan !== "free",
+        plan: effectivePlan,
+        expiresAt,
         loading: false,
       });
     } catch {
@@ -56,21 +55,12 @@ export function useSubscription() {
 
   useEffect(() => {
     checkSubscription();
-    const interval = setInterval(checkSubscription, 60000);
+    const interval = setInterval(checkSubscription, 30000);
     return () => clearInterval(interval);
   }, [checkSubscription]);
 
-  const getCurrentTier = () => {
-    if (!state.subscribed || !state.productId) return "free";
-    if (state.productId === TIERS.team.product_id) return "team";
-    if (state.productId === TIERS.pro.product_id) return "pro";
-    return "free";
-  };
-
   const checkout = async (priceId: string) => {
-    const { data, error } = await supabase.functions.invoke("create-checkout", {
-      body: { priceId },
-    });
+    const { data, error } = await supabase.functions.invoke("create-checkout", { body: { priceId } });
     if (error) throw error;
     if (data?.url) window.open(data.url, "_blank");
   };
@@ -83,7 +73,9 @@ export function useSubscription() {
 
   return {
     ...state,
-    currentTier: getCurrentTier(),
+    currentTier: state.plan,
+    productId: null as string | null,
+    subscriptionEnd: state.expiresAt,
     checkout,
     manageSubscription,
     refresh: checkSubscription,

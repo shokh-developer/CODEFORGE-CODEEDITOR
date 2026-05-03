@@ -22,6 +22,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus, vs } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "next-themes";
+import { useCredits } from "@/hooks/useCredits";
 
 // ==================== TYPES & INTERFACES ====================
 
@@ -219,28 +220,84 @@ const useLocalStorage = <T,>(key: string, initialValue: T): [T, (value: T) => vo
 };
 
 const useConversations = (projectId?: string) => {
-  const [conversations, setConversations] = useLocalStorage<Conversation[]>("ai-conversations", []);
-  
-  const saveConversation = useCallback((conversation: Conversation) => {
-    const updated = [...conversations];
-    const index = updated.findIndex(c => c.id === conversation.id);
-    if (index >= 0) {
-      updated[index] = conversation;
-    } else {
-      updated.unshift(conversation);
-    }
-    setConversations(updated);
-  }, [conversations, setConversations]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
 
-  const deleteConversation = useCallback((id: string) => {
-    setConversations(conversations.filter(c => c.id !== id));
-  }, [conversations, setConversations]);
+  const loadConversations = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data: convs } = await supabase
+      .from("ai_conversations" as any)
+      .select("id, title, project_id, created_at, updated_at")
+      .eq("user_id", user.id)
+      .order("updated_at", { ascending: false });
+    if (!convs) return;
+    setConversations(
+      (convs as any[]).map(c => ({
+        id: c.id,
+        title: c.title,
+        messages: [],
+        projectId: c.project_id || undefined,
+        createdAt: new Date(c.created_at),
+        updatedAt: new Date(c.updated_at),
+      }))
+    );
+  }, []);
+
+  useEffect(() => { loadConversations(); }, [loadConversations]);
+
+  const createConversation = useCallback(async (title: string): Promise<string | null> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    const { data, error } = await supabase
+      .from("ai_conversations" as any)
+      .insert({ user_id: user.id, title: title.slice(0, 80), project_id: projectId } as any)
+      .select("id")
+      .single();
+    if (error || !data) return null;
+    await loadConversations();
+    return (data as any).id;
+  }, [projectId, loadConversations]);
+
+  const persistMessage = useCallback(async (conversationId: string, role: string, content: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from("ai_messages" as any).insert({
+      conversation_id: conversationId,
+      user_id: user.id,
+      role,
+      content,
+    } as any);
+    await supabase
+      .from("ai_conversations" as any)
+      .update({ updated_at: new Date().toISOString() } as any)
+      .eq("id", conversationId);
+  }, []);
+
+  const loadMessages = useCallback(async (conversationId: string): Promise<Message[]> => {
+    const { data } = await supabase
+      .from("ai_messages" as any)
+      .select("id, role, content, created_at")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: true });
+    if (!data) return [];
+    return (data as any[]).map(m => ({
+      id: m.id,
+      role: m.role,
+      content: m.content,
+      timestamp: new Date(m.created_at),
+    }));
+  }, []);
+
+  const deleteConversation = useCallback(async (id: string) => {
+    await supabase.from("ai_conversations" as any).delete().eq("id", id);
+    await loadConversations();
+  }, [loadConversations]);
 
   const getProjectConversations = useCallback(() => {
-    return conversations.filter(c => c.projectId === projectId);
+    return conversations.filter(c => !projectId || c.projectId === projectId);
   }, [conversations, projectId]);
 
-  return { conversations, saveConversation, deleteConversation, getProjectConversations };
+  return { conversations, createConversation, persistMessage, loadMessages, deleteConversation, getProjectConversations, reload: loadConversations };
 };
 
 // ==================== COMPONENTS ====================
@@ -439,6 +496,18 @@ const ConversationItem = memo(({ conversation, isActive, onClick, onDelete }: {
 
 ConversationItem.displayName = "ConversationItem";
 
+const InlineCreditBadge = () => {
+  const { balance, dailyLimit, loading } = useCredits();
+  if (loading) return null;
+  const pct = dailyLimit > 0 ? (balance / dailyLimit) * 100 : 0;
+  const color = pct < 20 ? "text-destructive border-destructive/40 bg-destructive/10" : pct < 50 ? "text-amber-400 border-amber-400/40 bg-amber-400/10" : "text-emerald-400 border-emerald-400/40 bg-emerald-400/10";
+  return (
+    <Badge variant="outline" className={cn("text-[9px] px-2 py-0.5 h-5 font-mono", color)} title={`Daily credits ${balance}/${dailyLimit}`}>
+      <Zap className="h-2.5 w-2.5 mr-1" />{balance}/{dailyLimit}
+    </Badge>
+  );
+};
+
 // ==================== MAIN COMPONENT ====================
 
 const AIAssistant = ({
@@ -477,7 +546,7 @@ const AIAssistant = ({
   // Hooks
   const { toast } = useToast();
   const { theme } = useTheme();
-  const { saveConversation, deleteConversation, getProjectConversations } = useConversations(projectId);
+  const { conversations, createConversation, persistMessage, loadMessages, deleteConversation, getProjectConversations } = useConversations(projectId);
 
   // Effects
   useEffect(() => {
@@ -507,22 +576,7 @@ const AIAssistant = ({
     }
   }, [isOpen]);
 
-  // Save conversation on message change
-  useEffect(() => {
-    if (messages.length > 0 && currentConversationId) {
-      const firstUserMessage = messages.find(m => m.role === "user");
-      const title = firstUserMessage?.content.slice(0, 50) || "New Conversation";
-      
-      saveConversation({
-        id: currentConversationId,
-        title,
-        messages,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        projectId,
-      });
-    }
-  }, [messages, currentConversationId, projectId, saveConversation]);
+  // Conversations are persisted via persistMessage/createConversation calls below.
 
   // Core Functions
   const sendMessage = useCallback(async (prompt: string) => {
@@ -533,8 +587,10 @@ const AIAssistant = ({
     }
 
     // Create new conversation if needed
-    if (!currentConversationId) {
-      setCurrentConversationId(generateId());
+    let convId = currentConversationId;
+    if (!convId) {
+      convId = await createConversation(prompt.slice(0, 50));
+      if (convId) setCurrentConversationId(convId);
     }
 
     const userMessage: Message = {
@@ -543,6 +599,7 @@ const AIAssistant = ({
       content: prompt,
       timestamp: new Date(),
     };
+    if (convId) await persistMessage(convId, "user", prompt);
     
     setMessages(prev => [...prev, userMessage]);
     setInput("");
@@ -655,6 +712,7 @@ Guidelines:
           }
           return updated;
         });
+        if (convId) await persistMessage(convId, "assistant", text);
       } else {
         const data = await response.json();
         const responseText = data.response || data.error || "No response from AI";
@@ -667,6 +725,7 @@ Guidelines:
           timestamp: new Date(),
           actions: actions.length > 0 ? actions : undefined,
         }]);
+        if (convId) await persistMessage(convId, "assistant", text);
       }
     } catch (error: any) {
       console.error("AI Error:", error);
@@ -680,7 +739,7 @@ Guidelines:
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, aiDisabled, messages, files, activeFile, code, language, toast, selectedModel, temperature, maxTokens, projectName, currentConversationId]);
+  }, [isLoading, aiDisabled, messages, files, activeFile, code, language, toast, selectedModel, temperature, maxTokens, projectName, currentConversationId, createConversation, persistMessage]);
 
   const generateProject = useCallback(async (prompt: string) => {
     if (!prompt.trim() || isGenerating) return;
@@ -819,8 +878,9 @@ Guidelines:
     toast({ title: "Chat Cleared", description: "Started a new conversation" });
   };
 
-  const loadConversation = (conversation: Conversation) => {
-    setMessages(conversation.messages);
+  const loadConversation = async (conversation: Conversation) => {
+    const msgs = await loadMessages(conversation.id);
+    setMessages(msgs);
     setCurrentConversationId(conversation.id);
     setShowHistory(false);
     toast({ title: "Conversation Loaded", description: conversation.title });
@@ -828,7 +888,7 @@ Guidelines:
 
   const startNewConversation = () => {
     setMessages([]);
-    setCurrentConversationId(generateId());
+    setCurrentConversationId(null);
     setShowHistory(false);
     toast({ title: "New Conversation", description: "Started a fresh chat session" });
   };
@@ -906,9 +966,10 @@ Guidelines:
                       {selectedModel.name}
                     </Badge>
                   </h3>
-                  <p className="text-[9px] text-muted-foreground">/generate to create projects • {messages.length} messages</p>
+                  <p className="text-[9px] text-muted-foreground">50 credits/msg • {messages.length} messages</p>
                 </div>
               </div>
+              <InlineCreditBadge />
               
               <div className="flex items-center gap-0.5">
                 <Tooltip>
