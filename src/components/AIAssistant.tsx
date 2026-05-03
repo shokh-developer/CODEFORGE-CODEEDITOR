@@ -496,6 +496,18 @@ const ConversationItem = memo(({ conversation, isActive, onClick, onDelete }: {
 
 ConversationItem.displayName = "ConversationItem";
 
+const InlineCreditBadge = () => {
+  const { balance, dailyLimit, loading } = useCredits();
+  if (loading) return null;
+  const pct = dailyLimit > 0 ? (balance / dailyLimit) * 100 : 0;
+  const color = pct < 20 ? "text-destructive border-destructive/40 bg-destructive/10" : pct < 50 ? "text-amber-400 border-amber-400/40 bg-amber-400/10" : "text-emerald-400 border-emerald-400/40 bg-emerald-400/10";
+  return (
+    <Badge variant="outline" className={cn("text-[9px] px-2 py-0.5 h-5 font-mono", color)} title={`Daily credits ${balance}/${dailyLimit}`}>
+      <Zap className="h-2.5 w-2.5 mr-1" />{balance}/{dailyLimit}
+    </Badge>
+  );
+};
+
 // ==================== MAIN COMPONENT ====================
 
 const AIAssistant = ({
