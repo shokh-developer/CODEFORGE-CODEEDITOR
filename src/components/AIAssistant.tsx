@@ -533,7 +533,7 @@ const AIAssistant = ({
   // Hooks
   const { toast } = useToast();
   const { theme } = useTheme();
-  const { saveConversation, deleteConversation, getProjectConversations } = useConversations(projectId);
+  const { conversations, createConversation, persistMessage, loadMessages, deleteConversation, getProjectConversations } = useConversations(projectId);
 
   // Effects
   useEffect(() => {
@@ -563,22 +563,7 @@ const AIAssistant = ({
     }
   }, [isOpen]);
 
-  // Save conversation on message change
-  useEffect(() => {
-    if (messages.length > 0 && currentConversationId) {
-      const firstUserMessage = messages.find(m => m.role === "user");
-      const title = firstUserMessage?.content.slice(0, 50) || "New Conversation";
-      
-      saveConversation({
-        id: currentConversationId,
-        title,
-        messages,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        projectId,
-      });
-    }
-  }, [messages, currentConversationId, projectId, saveConversation]);
+  // Conversations are persisted via persistMessage/createConversation calls below.
 
   // Core Functions
   const sendMessage = useCallback(async (prompt: string) => {
