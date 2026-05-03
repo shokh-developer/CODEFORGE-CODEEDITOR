@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -103,6 +104,39 @@ serve(async (req) => {
   }
 
   try {
+    // --- Auth: require a valid JWT ---
+    const authHeader = req.headers.get("Authorization") || req.headers.get("authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Authentication required" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const supabaseAuth = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: userRes, error: userErr } = await supabaseAuth.auth.getUser();
+    if (userErr || !userRes?.user) {
+      return new Response(
+        JSON.stringify({ error: "Invalid authentication" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    // Optional: respect user_ai_access toggle if a row exists
+    const { data: aiAccess } = await supabaseAuth
+      .from("user_ai_access")
+      .select("ai_enabled")
+      .eq("user_id", userRes.user.id)
+      .maybeSingle();
+    if (aiAccess && aiAccess.ai_enabled === false) {
+      return new Response(
+        JSON.stringify({ error: "AI access disabled for this account" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { prompt, code, language, messages: chatHistory, mode } = await req.json();
     const isProjectMode = mode === "generate-project";
 
