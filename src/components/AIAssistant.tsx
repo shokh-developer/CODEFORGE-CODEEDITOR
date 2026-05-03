@@ -699,6 +699,7 @@ Guidelines:
           }
           return updated;
         });
+        if (convId) await persistMessage(convId, "assistant", text);
       } else {
         const data = await response.json();
         const responseText = data.response || data.error || "No response from AI";
@@ -711,6 +712,7 @@ Guidelines:
           timestamp: new Date(),
           actions: actions.length > 0 ? actions : undefined,
         }]);
+        if (convId) await persistMessage(convId, "assistant", text);
       }
     } catch (error: any) {
       console.error("AI Error:", error);
