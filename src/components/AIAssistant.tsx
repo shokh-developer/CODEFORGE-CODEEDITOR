@@ -957,7 +957,7 @@ Guidelines:
                   <p className="text-[9px] text-muted-foreground">50 credits/msg • {messages.length} messages</p>
                 </div>
               </div>
-              <CreditBadge />
+              <InlineCreditBadge />
               
               <div className="flex items-center gap-0.5">
                 <Tooltip>
