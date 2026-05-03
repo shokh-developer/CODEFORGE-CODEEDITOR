@@ -726,7 +726,7 @@ Guidelines:
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, aiDisabled, messages, files, activeFile, code, language, toast, selectedModel, temperature, maxTokens, projectName, currentConversationId]);
+  }, [isLoading, aiDisabled, messages, files, activeFile, code, language, toast, selectedModel, temperature, maxTokens, projectName, currentConversationId, createConversation, persistMessage]);
 
   const generateProject = useCallback(async (prompt: string) => {
     if (!prompt.trim() || isGenerating) return;
@@ -865,8 +865,9 @@ Guidelines:
     toast({ title: "Chat Cleared", description: "Started a new conversation" });
   };
 
-  const loadConversation = (conversation: Conversation) => {
-    setMessages(conversation.messages);
+  const loadConversation = async (conversation: Conversation) => {
+    const msgs = await loadMessages(conversation.id);
+    setMessages(msgs);
     setCurrentConversationId(conversation.id);
     setShowHistory(false);
     toast({ title: "Conversation Loaded", description: conversation.title });
@@ -874,7 +875,7 @@ Guidelines:
 
   const startNewConversation = () => {
     setMessages([]);
-    setCurrentConversationId(generateId());
+    setCurrentConversationId(null);
     setShowHistory(false);
     toast({ title: "New Conversation", description: "Started a fresh chat session" });
   };
