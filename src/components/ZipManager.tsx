@@ -121,22 +121,28 @@ const ZipManager = ({ files, onFilesImported, roomName = "project" }: ZipManager
         }
 
         try {
-          const content = await zipEntry.async("string");
           const pathParts = relativePath.split("/");
           const fileName = pathParts.pop() || "";
           const filePath = "/" + (pathParts.length > 0 ? pathParts.join("/") + "/" : "");
 
-          importedFiles.push({
-            name: fileName,
-            path: filePath,
-            content,
-            language: getLanguageFromName(fileName),
-          });
+          let content: string;
+          let language: string;
 
-          progressLog.push(`✓ ${relativePath}`);
+          if (isTextFile(fileName)) {
+            content = await zipEntry.async("string");
+            language = getLanguageFromName(fileName);
+          } else {
+            // Binary file (jar, png, pdf, exe, ...) — store as base64 data URI
+            const b64 = await zipEntry.async("base64");
+            content = `data:application/octet-stream;base64,${b64}`;
+            language = "binary";
+          }
+
+          importedFiles.push({ name: fileName, path: filePath, content, language });
+          progressLog.push(`✓ ${relativePath}${language === "binary" ? " (binary)" : ""}`);
           setUploadProgress([...progressLog]);
         } catch (err) {
-          progressLog.push(`✗ ${relativePath} (binary fayl o'tkazib yuborildi)`);
+          progressLog.push(`✗ ${relativePath}`);
           setUploadProgress([...progressLog]);
         }
       }
