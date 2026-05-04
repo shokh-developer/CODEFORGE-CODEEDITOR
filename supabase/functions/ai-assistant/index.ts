@@ -191,7 +191,7 @@ serve(async (req) => {
           model: "google/gemini-3-flash-preview",
           messages: allMessages,
           temperature: 0.2,
-          max_tokens: 32768,
+          max_tokens: 16384,
           stream: false,
           tools: [PROJECT_FILES_TOOL],
           tool_choice: {
@@ -254,7 +254,7 @@ serve(async (req) => {
         model: "google/gemini-3-flash-preview",
         messages: allMessages,
         temperature: 0.7,
-        max_tokens: 8192,
+        max_tokens: 4096,
         stream: true,
       }),
     });
