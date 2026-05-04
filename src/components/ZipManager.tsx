@@ -340,6 +340,37 @@ const ZipManager = ({ files, onFilesImported, roomName = "project" }: ZipManager
               <span className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center text-xs">
+              <span className="bg-card px-2 text-muted-foreground">yoki sayt URL'i</span>
+            </div>
+          </div>
+
+          {/* Import website */}
+          <div className="flex gap-2">
+            <Input
+              value={siteUrl}
+              onChange={(e) => setSiteUrl(e.target.value)}
+              placeholder="https://example.com"
+              className="bg-background/50 text-xs"
+              disabled={isImportingSite}
+              onKeyDown={(e) => { if (e.key === "Enter") handleImportSite(); }}
+            />
+            <Button
+              onClick={handleImportSite}
+              disabled={isImportingSite || !siteUrl.trim()}
+              variant="outline"
+              size="sm"
+              className="gap-1.5 shrink-0"
+            >
+              {isImportingSite ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Globe className="h-3.5 w-3.5" />}
+              Import
+            </Button>
+          </div>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs">
               <span className="bg-card px-2 text-muted-foreground">yoki</span>
             </div>
           </div>
