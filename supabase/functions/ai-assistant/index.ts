@@ -144,7 +144,7 @@ serve(async (req) => {
     );
     const { data: creditResult, error: creditErr } = await adminClient.rpc("consume_credits", {
       _user_id: userRes.user.id,
-      _amount: 50,
+      _amount: 25,
     });
     if (creditErr) {
       console.error("consume_credits error:", creditErr);
