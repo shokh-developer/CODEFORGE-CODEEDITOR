@@ -38,54 +38,48 @@ interface ZipManagerProps {
   roomName?: string;
 }
 
+const TEXT_EXTENSIONS = new Set([
+  "js","jsx","ts","tsx","html","htm","css","scss","sass","less",
+  "json","yaml","yml","toml","xml","svg","md","markdown","txt","csv",
+  "py","rb","php","go","rs","java","kt","swift","c","cpp","cc","cxx","h","hpp",
+  "cs","sh","bash","zsh","sql","graphql","gql","vue","svelte","astro","env",
+  "gitignore","dockerfile","makefile","ini","conf","log",
+]);
+
 const getLanguageFromName = (name: string): string => {
   const ext = name.split(".").pop()?.toLowerCase();
   switch (ext) {
-    case "js":
-    case "jsx":
-      return "javascript";
-    case "ts":
-    case "tsx":
-      return "typescript";
-    case "html":
-      return "html";
-    case "css":
-    case "scss":
-      return "css";
-    case "json":
-      return "json";
-    case "py":
-      return "python";
-    case "md":
-      return "markdown";
-    case "sql":
-      return "sql";
-    case "cpp":
-    case "cc":
-    case "cxx":
-      return "cpp";
-    case "c":
-      return "c";
-    case "h":
-    case "hpp":
-      return "cpp";
-    case "java":
-      return "java";
-    case "go":
-      return "go";
-    case "rs":
-      return "rust";
-    case "php":
-      return "php";
-    case "rb":
-      return "ruby";
-    case "swift":
-      return "swift";
-    case "kt":
-      return "kotlin";
-    default:
-      return "plaintext";
+    case "js": case "jsx": return "javascript";
+    case "ts": case "tsx": return "typescript";
+    case "html": case "htm": return "html";
+    case "css": case "scss": case "sass": case "less": return "css";
+    case "json": return "json";
+    case "py": return "python";
+    case "md": case "markdown": return "markdown";
+    case "sql": return "sql";
+    case "cpp": case "cc": case "cxx": case "h": case "hpp": return "cpp";
+    case "c": return "c";
+    case "java": return "java";
+    case "go": return "go";
+    case "rs": return "rust";
+    case "php": return "php";
+    case "rb": return "ruby";
+    case "swift": return "swift";
+    case "kt": return "kotlin";
+    case "jar": case "class": return "java";
+    case "xml": return "xml";
+    case "yaml": case "yml": return "yaml";
+    case "sh": case "bash": return "shell";
+    default: return "plaintext";
   }
+};
+
+const isTextFile = (name: string): boolean => {
+  const ext = name.split(".").pop()?.toLowerCase() || "";
+  if (TEXT_EXTENSIONS.has(ext)) return true;
+  // No extension: treat as text (Dockerfile, Makefile, etc)
+  if (!name.includes(".")) return true;
+  return false;
 };
 
 const ZipManager = ({ files, onFilesImported, roomName = "project" }: ZipManagerProps) => {
