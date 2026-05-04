@@ -966,7 +966,7 @@ Guidelines:
                       {selectedModel.name}
                     </Badge>
                   </h3>
-                  <p className="text-[9px] text-muted-foreground">50 credits/msg • {messages.length} messages</p>
+                  <p className="text-[9px] text-muted-foreground">25 credits/msg • {messages.length} messages</p>
                 </div>
               </div>
               <InlineCreditBadge />

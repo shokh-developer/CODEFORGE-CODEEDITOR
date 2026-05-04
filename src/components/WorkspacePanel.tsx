@@ -19,6 +19,7 @@ import {
   MessageCircle, Trash2, FileCode, FilePlus, FolderPlus,
   Bug, Copy, Check, ChevronDown
 } from "lucide-react";
+import CreditBadge from "@/components/CreditBadge";
 
 // ==================== TYPES ====================
 
@@ -587,7 +588,7 @@ const WorkspacePanel = ({
 
   return (
     <div className="w-full h-full flex flex-col bg-card border-l border-border overflow-hidden">
-      <div className="flex h-10 border-b border-border flex-shrink-0 bg-card">
+      <div className="flex h-10 border-b border-border flex-shrink-0 bg-card items-stretch">
         {TABS.map(tab => (
           <button
             key={tab.id}
@@ -603,6 +604,9 @@ const WorkspacePanel = ({
             <span className="hidden sm:inline">{tab.label}</span>
           </button>
         ))}
+        <div className="flex items-center pr-2 pl-1 border-b border-transparent">
+          <CreditBadge />
+        </div>
       </div>
 
       {/* Panel content */}

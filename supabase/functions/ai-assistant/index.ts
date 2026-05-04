@@ -144,7 +144,7 @@ serve(async (req) => {
     );
     const { data: creditResult, error: creditErr } = await adminClient.rpc("consume_credits", {
       _user_id: userRes.user.id,
-      _amount: 50,
+      _amount: 25,
     });
     if (creditErr) {
       console.error("consume_credits error:", creditErr);
@@ -191,7 +191,7 @@ serve(async (req) => {
           model: "google/gemini-3-flash-preview",
           messages: allMessages,
           temperature: 0.2,
-          max_tokens: 32768,
+          max_tokens: 16384,
           stream: false,
           tools: [PROJECT_FILES_TOOL],
           tool_choice: {
@@ -254,7 +254,7 @@ serve(async (req) => {
         model: "google/gemini-3-flash-preview",
         messages: allMessages,
         temperature: 0.7,
-        max_tokens: 8192,
+        max_tokens: 4096,
         stream: true,
       }),
     });

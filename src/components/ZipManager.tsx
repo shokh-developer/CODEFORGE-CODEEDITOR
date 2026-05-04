@@ -12,6 +12,8 @@ import {
   Check,
   AlertCircle,
 } from "lucide-react";
+import { Globe } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -38,54 +40,48 @@ interface ZipManagerProps {
   roomName?: string;
 }
 
+const TEXT_EXTENSIONS = new Set([
+  "js","jsx","ts","tsx","html","htm","css","scss","sass","less",
+  "json","yaml","yml","toml","xml","svg","md","markdown","txt","csv",
+  "py","rb","php","go","rs","java","kt","swift","c","cpp","cc","cxx","h","hpp",
+  "cs","sh","bash","zsh","sql","graphql","gql","vue","svelte","astro","env",
+  "gitignore","dockerfile","makefile","ini","conf","log",
+]);
+
 const getLanguageFromName = (name: string): string => {
   const ext = name.split(".").pop()?.toLowerCase();
   switch (ext) {
-    case "js":
-    case "jsx":
-      return "javascript";
-    case "ts":
-    case "tsx":
-      return "typescript";
-    case "html":
-      return "html";
-    case "css":
-    case "scss":
-      return "css";
-    case "json":
-      return "json";
-    case "py":
-      return "python";
-    case "md":
-      return "markdown";
-    case "sql":
-      return "sql";
-    case "cpp":
-    case "cc":
-    case "cxx":
-      return "cpp";
-    case "c":
-      return "c";
-    case "h":
-    case "hpp":
-      return "cpp";
-    case "java":
-      return "java";
-    case "go":
-      return "go";
-    case "rs":
-      return "rust";
-    case "php":
-      return "php";
-    case "rb":
-      return "ruby";
-    case "swift":
-      return "swift";
-    case "kt":
-      return "kotlin";
-    default:
-      return "plaintext";
+    case "js": case "jsx": return "javascript";
+    case "ts": case "tsx": return "typescript";
+    case "html": case "htm": return "html";
+    case "css": case "scss": case "sass": case "less": return "css";
+    case "json": return "json";
+    case "py": return "python";
+    case "md": case "markdown": return "markdown";
+    case "sql": return "sql";
+    case "cpp": case "cc": case "cxx": case "h": case "hpp": return "cpp";
+    case "c": return "c";
+    case "java": return "java";
+    case "go": return "go";
+    case "rs": return "rust";
+    case "php": return "php";
+    case "rb": return "ruby";
+    case "swift": return "swift";
+    case "kt": return "kotlin";
+    case "jar": case "class": return "java";
+    case "xml": return "xml";
+    case "yaml": case "yml": return "yaml";
+    case "sh": case "bash": return "shell";
+    default: return "plaintext";
   }
+};
+
+const isTextFile = (name: string): boolean => {
+  const ext = name.split(".").pop()?.toLowerCase() || "";
+  if (TEXT_EXTENSIONS.has(ext)) return true;
+  // No extension: treat as text (Dockerfile, Makefile, etc)
+  if (!name.includes(".")) return true;
+  return false;
 };
 
 const ZipManager = ({ files, onFilesImported, roomName = "project" }: ZipManagerProps) => {
@@ -93,7 +89,35 @@ const ZipManager = ({ files, onFilesImported, roomName = "project" }: ZipManager
   const [isDownloading, setIsDownloading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string[]>([]);
+  const [siteUrl, setSiteUrl] = useState("");
+  const [isImportingSite, setIsImportingSite] = useState(false);
   const { toast } = useToast();
+
+  const handleImportSite = async () => {
+    let url = siteUrl.trim();
+    if (!url) return;
+    if (!/^https?:\/\//i.test(url)) url = "https://" + url;
+    setIsImportingSite(true);
+    try {
+      // Use a public CORS proxy to fetch HTML from any site
+      const proxied = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+      const res = await fetch(proxied);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const html = await res.text();
+      let host = "site";
+      try { host = new URL(url).hostname.replace(/^www\./, "").replace(/\./g, "-"); } catch {}
+      onFilesImported([
+        { name: "index.html", path: `/${host}/`, content: html, language: "html" },
+      ]);
+      toast({ title: "Sayt import qilindi", description: `${host}/index.html yaratildi` });
+      setSiteUrl("");
+      setIsOpen(false);
+    } catch (e: any) {
+      toast({ title: "Xato", description: e?.message || "Saytni yuklab bo'lmadi", variant: "destructive" });
+    } finally {
+      setIsImportingSite(false);
+    }
+  };
 
   const handleUploadZip = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -127,22 +151,28 @@ const ZipManager = ({ files, onFilesImported, roomName = "project" }: ZipManager
         }
 
         try {
-          const content = await zipEntry.async("string");
           const pathParts = relativePath.split("/");
           const fileName = pathParts.pop() || "";
           const filePath = "/" + (pathParts.length > 0 ? pathParts.join("/") + "/" : "");
 
-          importedFiles.push({
-            name: fileName,
-            path: filePath,
-            content,
-            language: getLanguageFromName(fileName),
-          });
+          let content: string;
+          let language: string;
 
-          progressLog.push(`✓ ${relativePath}`);
+          if (isTextFile(fileName)) {
+            content = await zipEntry.async("string");
+            language = getLanguageFromName(fileName);
+          } else {
+            // Binary file (jar, png, pdf, exe, ...) — store as base64 data URI
+            const b64 = await zipEntry.async("base64");
+            content = `data:application/octet-stream;base64,${b64}`;
+            language = "binary";
+          }
+
+          importedFiles.push({ name: fileName, path: filePath, content, language });
+          progressLog.push(`✓ ${relativePath}${language === "binary" ? " (binary)" : ""}`);
           setUploadProgress([...progressLog]);
         } catch (err) {
-          progressLog.push(`✗ ${relativePath} (binary fayl o'tkazib yuborildi)`);
+          progressLog.push(`✗ ${relativePath}`);
           setUploadProgress([...progressLog]);
         }
       }
@@ -188,11 +218,12 @@ const ZipManager = ({ files, onFilesImported, roomName = "project" }: ZipManager
       const zip = new JSZip();
 
       files.forEach((file) => {
-        if (!file.is_folder) {
-          // Remove leading slash and construct path
-          const filePath = file.path === "/" 
-            ? file.name 
-            : file.path.slice(1) + file.name;
+        if (file.is_folder) return;
+        const filePath = file.path === "/" ? file.name : file.path.slice(1) + file.name;
+        const m = file.content.match(/^data:[^;]*;base64,(.*)$/);
+        if (m) {
+          zip.file(filePath, m[1], { base64: true });
+        } else {
           zip.file(filePath, file.content);
         }
       });
@@ -302,6 +333,37 @@ const ZipManager = ({ files, onFilesImported, roomName = "project" }: ZipManager
                 </motion.div>
               )}
             </AnimatePresence>
+          </div>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-card px-2 text-muted-foreground">yoki sayt URL'i</span>
+            </div>
+          </div>
+
+          {/* Import website */}
+          <div className="flex gap-2">
+            <Input
+              value={siteUrl}
+              onChange={(e) => setSiteUrl(e.target.value)}
+              placeholder="https://example.com"
+              className="bg-background/50 text-xs"
+              disabled={isImportingSite}
+              onKeyDown={(e) => { if (e.key === "Enter") handleImportSite(); }}
+            />
+            <Button
+              onClick={handleImportSite}
+              disabled={isImportingSite || !siteUrl.trim()}
+              variant="outline"
+              size="sm"
+              className="gap-1.5 shrink-0"
+            >
+              {isImportingSite ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Globe className="h-3.5 w-3.5" />}
+              Import
+            </Button>
           </div>
 
           <div className="relative">
