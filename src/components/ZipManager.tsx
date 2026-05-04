@@ -87,7 +87,35 @@ const ZipManager = ({ files, onFilesImported, roomName = "project" }: ZipManager
   const [isDownloading, setIsDownloading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string[]>([]);
+  const [siteUrl, setSiteUrl] = useState("");
+  const [isImportingSite, setIsImportingSite] = useState(false);
   const { toast } = useToast();
+
+  const handleImportSite = async () => {
+    let url = siteUrl.trim();
+    if (!url) return;
+    if (!/^https?:\/\//i.test(url)) url = "https://" + url;
+    setIsImportingSite(true);
+    try {
+      // Use a public CORS proxy to fetch HTML from any site
+      const proxied = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+      const res = await fetch(proxied);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const html = await res.text();
+      let host = "site";
+      try { host = new URL(url).hostname.replace(/^www\./, "").replace(/\./g, "-"); } catch {}
+      onFilesImported([
+        { name: "index.html", path: `/${host}/`, content: html, language: "html" },
+      ]);
+      toast({ title: "Sayt import qilindi", description: `${host}/index.html yaratildi` });
+      setSiteUrl("");
+      setIsOpen(false);
+    } catch (e: any) {
+      toast({ title: "Xato", description: e?.message || "Saytni yuklab bo'lmadi", variant: "destructive" });
+    } finally {
+      setIsImportingSite(false);
+    }
+  };
 
   const handleUploadZip = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
