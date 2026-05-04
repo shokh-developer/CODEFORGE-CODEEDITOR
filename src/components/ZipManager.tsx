@@ -188,11 +188,12 @@ const ZipManager = ({ files, onFilesImported, roomName = "project" }: ZipManager
       const zip = new JSZip();
 
       files.forEach((file) => {
-        if (!file.is_folder) {
-          // Remove leading slash and construct path
-          const filePath = file.path === "/" 
-            ? file.name 
-            : file.path.slice(1) + file.name;
+        if (file.is_folder) return;
+        const filePath = file.path === "/" ? file.name : file.path.slice(1) + file.name;
+        const m = file.content.match(/^data:[^;]*;base64,(.*)$/);
+        if (m) {
+          zip.file(filePath, m[1], { base64: true });
+        } else {
           zip.file(filePath, file.content);
         }
       });
