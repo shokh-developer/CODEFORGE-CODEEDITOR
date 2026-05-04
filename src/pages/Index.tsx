@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import CreditBadge from "@/components/CreditBadge";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -130,6 +131,7 @@ const Index = () => {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              </>
             ) : (
               <Button size="sm" onClick={() => setShowAuthModal(true)} className="btn-futuristic gap-2 border-0 px-4">
                 <User className="h-3.5 w-3.5 relative z-10" /> <span className="relative z-10">Sign In</span>
