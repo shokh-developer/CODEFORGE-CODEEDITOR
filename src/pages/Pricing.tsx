@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Check, Zap, Users, Building, Sparkles, Crown, Loader2 } from "lucide-react";
+import { ArrowLeft, Check, Zap, Users, Sparkles, Crown, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
