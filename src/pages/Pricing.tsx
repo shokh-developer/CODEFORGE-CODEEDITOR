@@ -65,17 +65,12 @@ const Pricing = () => {
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
 
   const handleCheckout = async (priceId: string | null, planId: string) => {
-    if (!priceId) {
-      if (planId === "enterprise") {
-        toast({ title: "Enterprise", description: "Iltimos, biz bilan bog'laning: contact@kodo.uz" });
-      }
-      return;
-    }
+    if (!priceId) return;
     setCheckoutLoading(planId);
     try {
       await checkout(priceId);
     } catch {
-      toast({ title: "Xatolik", description: "To'lov sahifasini ochib bo'lmadi", variant: "destructive" });
+      toast({ title: "Error", description: "Could not open checkout page", variant: "destructive" });
     } finally {
       setCheckoutLoading(null);
     }
