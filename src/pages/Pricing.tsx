@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Check, Zap, Users, Building, Sparkles, Crown, Loader2 } from "lucide-react";
+import { ArrowLeft, Check, Zap, Users, Sparkles, Crown, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,12 +12,13 @@ const plans = [
     id: "free",
     name: "Free",
     price: 0,
-    description: "Get started",
+    description: "Try BuildForge AI",
     icon: Sparkles,
     features: [
-      "5 rooms",
-      "Basic AI assistant",
-      "Unlimited files",
+      "350 AI credits / day",
+      "25 credits per AI request (~14/day)",
+      "5 collaborative rooms",
+      "Code execution & live preview",
       "Community support",
     ],
     priceId: null,
@@ -26,15 +27,15 @@ const plans = [
     id: "pro",
     name: "Pro",
     price: 9.99,
-    description: "For professional developers",
+    description: "For active builders",
     icon: Zap,
     popular: true,
     features: [
+      "1,500 AI credits / day (~60 requests)",
       "Unlimited rooms",
-      "Advanced AI (GPT-5, Gemini Pro)",
+      "Advanced AI models (GPT-5, Gemini Pro)",
       "Priority code execution",
       "Real-time collaboration",
-      "Custom themes",
       "Email support",
     ],
     priceId: TIERS.pro.price_id,
@@ -47,31 +48,15 @@ const plans = [
     icon: Users,
     features: [
       "Everything in Pro",
-      "Up to 10 team members",
-      "Team management",
-      "Collaborative coding",
+      "5,000 AI credits / day (~200 requests)",
+      "Team workspaces",
       "Admin panel",
       "Priority support",
     ],
     priceId: TIERS.team.price_id,
   },
-  {
-    id: "enterprise",
-    name: "Enterprise",
-    price: null,
-    description: "For large organizations",
-    icon: Building,
-    features: [
-      "Everything in Team",
-      "Unlimited members",
-      "SSO integration",
-      "Custom AI models",
-      "SLA guarantee",
-      "Dedicated manager",
-    ],
-    priceId: null,
-  },
 ];
+
 
 const Pricing = () => {
   const navigate = useNavigate();
@@ -80,17 +65,12 @@ const Pricing = () => {
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
 
   const handleCheckout = async (priceId: string | null, planId: string) => {
-    if (!priceId) {
-      if (planId === "enterprise") {
-        toast({ title: "Enterprise", description: "Iltimos, biz bilan bog'laning: contact@kodo.uz" });
-      }
-      return;
-    }
+    if (!priceId) return;
     setCheckoutLoading(planId);
     try {
       await checkout(priceId);
     } catch {
-      toast({ title: "Xatolik", description: "To'lov sahifasini ochib bo'lmadi", variant: "destructive" });
+      toast({ title: "Error", description: "Could not open checkout page", variant: "destructive" });
     } finally {
       setCheckoutLoading(null);
     }
@@ -111,12 +91,12 @@ const Pricing = () => {
           </Button>
           <div>
           <h1 className="text-3xl font-bold text-foreground tracking-tight">Pricing</h1>
-          <p className="text-sm text-muted-foreground mt-1">Choose the plan that fits you</p>
+          <p className="text-sm text-muted-foreground mt-1">Choose the plan that fits you · 25 credits per AI request</p>
           </div>
         </motion.div>
 
         {/* Plans Grid */}
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 sm:grid-cols-3 max-w-5xl mx-auto">
           {plans.map((plan, i) => {
             const isActive = currentTier === plan.id;
             const Icon = plan.icon;
@@ -156,14 +136,10 @@ const Pricing = () => {
                 </div>
 
                 <div className="mb-6">
-                  {plan.price !== null ? (
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-bold text-foreground">${plan.price}</span>
-                      <span className="text-sm text-muted-foreground">/oy</span>
-                    </div>
-                  ) : (
-                    <span className="text-2xl font-bold text-foreground">Maxsus</span>
-                  )}
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-bold text-foreground">${plan.price}</span>
+                    <span className="text-sm text-muted-foreground">/month</span>
+                  </div>
                 </div>
 
                 <ul className="space-y-2.5 mb-8 flex-1">
@@ -182,10 +158,6 @@ const Pricing = () => {
                 ) : plan.id === "free" ? (
                   <Button variant="outline" className="w-full" disabled>
                     {currentTier === "free" ? "Current plan" : "Free"}
-                  </Button>
-                ) : plan.id === "enterprise" ? (
-                  <Button variant="outline" className="w-full" onClick={() => handleCheckout(null, "enterprise")}>
-                    Contact us
                   </Button>
                 ) : (
                   <Button
