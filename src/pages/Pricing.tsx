@@ -136,14 +136,10 @@ const Pricing = () => {
                 </div>
 
                 <div className="mb-6">
-                  {plan.price !== null ? (
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-bold text-foreground">${plan.price}</span>
-                      <span className="text-sm text-muted-foreground">/oy</span>
-                    </div>
-                  ) : (
-                    <span className="text-2xl font-bold text-foreground">Maxsus</span>
-                  )}
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-bold text-foreground">${plan.price}</span>
+                    <span className="text-sm text-muted-foreground">/month</span>
+                  </div>
                 </div>
 
                 <ul className="space-y-2.5 mb-8 flex-1">
