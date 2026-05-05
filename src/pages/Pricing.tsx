@@ -96,7 +96,7 @@ const Pricing = () => {
         </motion.div>
 
         {/* Plans Grid */}
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 sm:grid-cols-3 max-w-5xl mx-auto">
           {plans.map((plan, i) => {
             const isActive = currentTier === plan.id;
             const Icon = plan.icon;
