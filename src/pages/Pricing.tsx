@@ -159,10 +159,6 @@ const Pricing = () => {
                   <Button variant="outline" className="w-full" disabled>
                     {currentTier === "free" ? "Current plan" : "Free"}
                   </Button>
-                ) : plan.id === "enterprise" ? (
-                  <Button variant="outline" className="w-full" onClick={() => handleCheckout(null, "enterprise")}>
-                    Contact us
-                  </Button>
                 ) : (
                   <Button
                     className="w-full"
