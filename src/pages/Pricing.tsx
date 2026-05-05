@@ -91,7 +91,7 @@ const Pricing = () => {
           </Button>
           <div>
           <h1 className="text-3xl font-bold text-foreground tracking-tight">Pricing</h1>
-          <p className="text-sm text-muted-foreground mt-1">Choose the plan that fits you</p>
+          <p className="text-sm text-muted-foreground mt-1">Choose the plan that fits you · 25 credits per AI request</p>
           </div>
         </motion.div>
 
