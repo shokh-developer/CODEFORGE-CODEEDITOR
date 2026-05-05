@@ -11,8 +11,8 @@ export interface SubscriptionState {
 }
 
 export const TIERS = {
-  pro: { price_id: "price_PRO_MONTHLY", product_id: "prod_PRO", name: "Pro", price: 9.99 },
-  team: { price_id: "price_TEAM_MONTHLY", product_id: "prod_TEAM", name: "Team", price: 29.99 },
+  pro: { price_id: "price_1THSTKFxAHy92PoIxTMBNqJz", product_id: "prod_UFyQsHPabpJKXg", name: "Pro", price: 9.99 },
+  team: { price_id: "price_1THSTwFxAHy92PoIgLxSU8Po", product_id: "prod_TEAM", name: "Team", price: 29.99 },
 } as const;
 
 export function useSubscription() {
