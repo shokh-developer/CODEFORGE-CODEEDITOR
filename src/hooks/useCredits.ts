@@ -13,6 +13,8 @@ export function useCredits() {
   const refresh = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setState({ balance: 0, dailyLimit: 350, loading: false }); return; }
+    // Trigger daily refill if needed
+    await supabase.rpc("refill_credits_if_needed" as any, { _user_id: user.id });
     const { data } = await supabase
       .from("user_credits" as any)
       .select("balance, daily_limit")
