@@ -576,6 +576,25 @@ const AIAssistant = ({
     }
   }, [isOpen]);
 
+  // Auto-load latest conversation so AI chat history persists across sessions
+  const autoLoadedRef = useRef(false);
+  useEffect(() => {
+    if (autoLoadedRef.current) return;
+    if (currentConversationId) return;
+    if (messages.length > 0) return;
+    const projectConvs = getProjectConversations();
+    if (projectConvs.length === 0) return;
+    autoLoadedRef.current = true;
+    const latest = projectConvs[0];
+    (async () => {
+      const msgs = await loadMessages(latest.id);
+      if (msgs.length > 0) {
+        setMessages(msgs);
+        setCurrentConversationId(latest.id);
+      }
+    })();
+  }, [conversations, currentConversationId, messages.length, getProjectConversations, loadMessages]);
+
   // Conversations are persisted via persistMessage/createConversation calls below.
 
   // Core Functions
