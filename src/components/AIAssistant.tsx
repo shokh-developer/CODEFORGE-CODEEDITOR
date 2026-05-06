@@ -1008,11 +1008,16 @@ Guidelines:
                 
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button onClick={() => setShowHistory(!showHistory)} className="p-1.5 rounded-lg hover:bg-muted/50 transition-colors">
+                    <button onClick={() => setShowHistory(!showHistory)} className="p-1.5 rounded-lg hover:bg-muted/50 transition-colors relative" title="Chat history">
                       <History className="h-3.5 w-3.5 text-muted-foreground" />
+                      {getProjectConversations().length > 0 && (
+                        <span className="absolute -top-0.5 -right-0.5 h-3.5 min-w-3.5 px-1 rounded-full bg-primary text-[8px] font-bold text-primary-foreground flex items-center justify-center">
+                          {getProjectConversations().length}
+                        </span>
+                      )}
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent>History</TooltipContent>
+                  <TooltipContent>Chat history ({getProjectConversations().length})</TooltipContent>
                 </Tooltip>
                 
                 <Tooltip>
