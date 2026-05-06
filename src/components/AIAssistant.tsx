@@ -627,11 +627,17 @@ Guidelines:
 - Ask clarifying questions when needed`;
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      if (!accessToken) {
+        throw new Error("Iltimos, qayta tizimga kiring (sessiya topilmadi).");
+      }
       const response = await fetch(`${SUPABASE_URL}/functions/v1/ai-assistant`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           prompt: `${prompt}\n\nCurrent code:\n\`\`\`${language}\n${code}\n\`\`\``,
