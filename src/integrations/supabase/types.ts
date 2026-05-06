@@ -439,6 +439,7 @@ export type Database = {
         Args: { _ban_type: string; _room_id: string; _user_id: string }
         Returns: boolean
       }
+      refill_credits_if_needed: { Args: { _user_id: string }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

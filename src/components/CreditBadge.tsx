@@ -19,15 +19,19 @@ const CreditBadge = ({ className, showLabel = false }: CreditBadgeProps) => {
       ? "border-amber-500/50 text-amber-400 bg-amber-500/10"
       : "border-primary/40 text-primary bg-primary/10";
   return (
-    <Badge
-      variant="outline"
-      className={cn("font-mono gap-1 px-2 py-0.5", color, className)}
-      title={`Kunlik AI credits: ${balance} / ${dailyLimit}`}
+    <div
+      className={cn(
+        "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border font-mono text-[10px] leading-none whitespace-nowrap",
+        color,
+        className
+      )}
+      title={`Daily AI credits: ${balance} / ${dailyLimit}`}
     >
-      <Zap className="h-3 w-3" />
-      <span className="text-[11px]">{balance}/{dailyLimit}</span>
-      {showLabel && <span className="text-[10px] opacity-70 ml-1">credits</span>}
-    </Badge>
+      <Zap className="h-2.5 w-2.5" />
+      <span>{balance}</span>
+      <span className="opacity-50">/</span>
+      <span className="opacity-70">{dailyLimit}</span>
+    </div>
   );
 };
 

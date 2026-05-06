@@ -576,6 +576,25 @@ const AIAssistant = ({
     }
   }, [isOpen]);
 
+  // Auto-load latest conversation so AI chat history persists across sessions
+  const autoLoadedRef = useRef(false);
+  useEffect(() => {
+    if (autoLoadedRef.current) return;
+    if (currentConversationId) return;
+    if (messages.length > 0) return;
+    const projectConvs = getProjectConversations();
+    if (projectConvs.length === 0) return;
+    autoLoadedRef.current = true;
+    const latest = projectConvs[0];
+    (async () => {
+      const msgs = await loadMessages(latest.id);
+      if (msgs.length > 0) {
+        setMessages(msgs);
+        setCurrentConversationId(latest.id);
+      }
+    })();
+  }, [conversations, currentConversationId, messages.length, getProjectConversations, loadMessages]);
+
   // Conversations are persisted via persistMessage/createConversation calls below.
 
   // Core Functions
@@ -627,11 +646,17 @@ Guidelines:
 - Ask clarifying questions when needed`;
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      if (!accessToken) {
+        throw new Error("Iltimos, qayta tizimga kiring (sessiya topilmadi).");
+      }
       const response = await fetch(`${SUPABASE_URL}/functions/v1/ai-assistant`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           prompt: `${prompt}\n\nCurrent code:\n\`\`\`${language}\n${code}\n\`\`\``,
@@ -983,11 +1008,16 @@ Guidelines:
                 
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button onClick={() => setShowHistory(!showHistory)} className="p-1.5 rounded-lg hover:bg-muted/50 transition-colors">
+                    <button onClick={() => setShowHistory(!showHistory)} className="p-1.5 rounded-lg hover:bg-muted/50 transition-colors relative" title="Chat history">
                       <History className="h-3.5 w-3.5 text-muted-foreground" />
+                      {getProjectConversations().length > 0 && (
+                        <span className="absolute -top-0.5 -right-0.5 h-3.5 min-w-3.5 px-1 rounded-full bg-primary text-[8px] font-bold text-primary-foreground flex items-center justify-center">
+                          {getProjectConversations().length}
+                        </span>
+                      )}
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent>History</TooltipContent>
+                  <TooltipContent>Chat history ({getProjectConversations().length})</TooltipContent>
                 </Tooltip>
                 
                 <Tooltip>
