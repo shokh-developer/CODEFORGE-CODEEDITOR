@@ -283,7 +283,8 @@ const usePanelConversations = (scope: string) => {
 
 // ==================== BUILDFORGE AI PANEL ====================
 
-const BuildForgePanel = ({ code, language, files, activeFile, onCreateFile, onUpdateFileContent, projectName }: {
+const BuildForgePanel = ({ roomId, code, language, files, activeFile, onCreateFile, onUpdateFileContent, projectName }: {
+  roomId: string;
   code: string; language: string; files: FileItem[]; activeFile: FileItem | null;
   onCreateFile: WorkspacePanelProps["onCreateFile"]; onUpdateFileContent: WorkspacePanelProps["onUpdateFileContent"];
   projectName?: string;
@@ -291,20 +292,39 @@ const BuildForgePanel = ({ code, language, files, activeFile, onCreateFile, onUp
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { conversations, createConversation, persistMessage, loadMessages } = usePanelConversations(`${roomId}:buildforge`);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages]);
 
+  useEffect(() => {
+    if (messages.length > 0 || currentConversationId || conversations.length === 0) return;
+    void loadMessages(conversations[0].id).then((loaded) => {
+      if (loaded.length > 0) {
+        setMessages(loaded);
+        setCurrentConversationId(conversations[0].id);
+      }
+    });
+  }, [conversations, currentConversationId, loadMessages, messages.length]);
+
   const generateProject = useCallback(async (prompt: string) => {
     if (!prompt.trim() || isGenerating) return;
     setIsGenerating(true);
+    let conversationId = currentConversationId;
+    if (!conversationId) {
+      conversationId = await createConversation(prompt);
+      if (conversationId) setCurrentConversationId(conversationId);
+    }
 
     const userMsg: Message = { id: generateId(), role: "user", content: prompt, timestamp: new Date() };
     const loadingMsg: Message = { id: generateId(), role: "assistant", content: "⏳ **Loyiha generatsiya qilinmoqda...**\n\nFayllar yaratilmoqda, biroz kuting.", timestamp: new Date() };
     setMessages(prev => [...prev, userMsg, loadingMsg]);
+    if (conversationId) await persistMessage(conversationId, "user", prompt);
 
     try {
       const { data, error } = await supabase.functions.invoke("ai-assistant", {
@@ -332,22 +352,54 @@ const BuildForgePanel = ({ code, language, files, activeFile, onCreateFile, onUp
         }
       }
 
-      setMessages(prev => prev.map(m => m.id === loadingMsg.id ? {
-        ...m, content: `✅ **Loyiha yaratildi!**\n\n${count} ta fayl:\n${generatedFiles.map((f: any) => `- 📄 \`${f.path || "/"}${f.name}\``).join("\n")}\n\n👁 Preview tugmasini bosib natijani ko'ring!`
-      } : m));
+      const successMessage = `✅ **Loyiha yaratildi!**\n\n${count} ta fayl:\n${generatedFiles.map((f: any) => `- 📄 \`${f.path || "/"}${f.name}\``).join("\n")}\n\n👁 Preview tugmasini bosib natijani ko'ring!`;
+      setMessages(prev => prev.map(m => m.id === loadingMsg.id ? { ...m, content: successMessage } : m));
+      if (conversationId) await persistMessage(conversationId, "assistant", successMessage);
       toast({ title: "Loyiha yaratildi!", description: `${count} ta fayl muvaffaqiyatli yaratildi` });
     } catch (err: any) {
-      setMessages(prev => prev.map(m => m.id === loadingMsg.id ? {
-        ...m, content: `❌ **Xatolik**: ${err?.message || "Noma'lum xato"}`
-      } : m));
+      const errorMessage = `❌ **Xatolik**: ${err?.message || "Noma'lum xato"}`;
+      setMessages(prev => prev.map(m => m.id === loadingMsg.id ? { ...m, content: errorMessage } : m));
+      if (conversationId) await persistMessage(conversationId, "assistant", errorMessage);
       toast({ title: "Xatolik", description: err?.message, variant: "destructive" });
     } finally {
       setIsGenerating(false);
     }
-  }, [isGenerating, onCreateFile, toast, projectName, files]);
+  }, [isGenerating, onCreateFile, toast, projectName, files, createConversation, currentConversationId, persistMessage]);
+
+  const loadConversation = useCallback(async (conversationId: string) => {
+    const loaded = await loadMessages(conversationId);
+    setMessages(loaded);
+    setCurrentConversationId(conversationId);
+    setShowHistory(false);
+  }, [loadMessages]);
 
   return (
     <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
+        <div>
+          <p className="text-xs font-semibold">BuildForge AI</p>
+          <p className="text-[10px] text-muted-foreground">Chat saqlanadi va keyin davom etadi</p>
+        </div>
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={() => { setMessages([]); setCurrentConversationId(null); }} className="rounded-md p-1.5 hover:bg-muted">
+            <Plus className="h-3.5 w-3.5 text-muted-foreground" />
+          </button>
+          <button type="button" onClick={() => setShowHistory((prev) => !prev)} className="relative rounded-md p-1.5 hover:bg-muted">
+            <History className="h-3.5 w-3.5 text-muted-foreground" />
+            {conversations.length > 0 && <span className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-1 text-[8px] text-primary-foreground">{conversations.length}</span>}
+          </button>
+        </div>
+      </div>
+      {showHistory && (
+        <div className="max-h-40 space-y-1 overflow-y-auto border-b border-border px-3 py-2">
+          {conversations.length === 0 ? <p className="text-[10px] text-muted-foreground">Saqlangan chat yo‘q</p> : conversations.map((conversation) => (
+            <button key={conversation.id} type="button" onClick={() => void loadConversation(conversation.id)} className="flex w-full items-center justify-between rounded-md border border-border bg-background px-2 py-1.5 text-left hover:bg-muted">
+              <span className="truncate text-[10px]">{conversation.title}</span>
+              <span className="ml-2 shrink-0 text-[9px] text-muted-foreground">{conversation.updatedAt.toLocaleDateString()}</span>
+            </button>
+          ))}
+        </div>
+      )}
       <ScrollArea className="flex-1 p-3" ref={scrollRef}>
         {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center py-8 px-3">
@@ -558,7 +610,7 @@ const CodeForgePanel = ({ code, language, files, activeFile, onCreateFile, onUpd
                   </Avatar>
                   <div className={cn("flex-1 p-2.5 rounded-md text-xs min-w-0 max-w-full overflow-hidden", msg.role === "user" ? "bg-secondary" : "bg-muted border border-border")}>
                     {msg.role === "assistant" ? (
-                      <MarkdownContent content={msg.content} language={language} onApplyCode={(c) => activeFile && onUpdateFileContent(activeFile.id, c)} />
+                      <MarkdownContent content={msg.content} language={language} />
                     ) : (
                       <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{msg.content}</span>
                     )}
