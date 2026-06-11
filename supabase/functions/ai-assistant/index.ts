@@ -118,9 +118,10 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
     const token = authHeader.replace(/^Bearer\s+/i, "").trim();
-    const { data: userRes, error: userErr } = await supabaseAuth.auth.getUser(token);
-    if (userErr || !userRes?.user) {
-      console.error("getUser failed:", userErr?.message);
+    const { data: claimsRes, error: claimsErr } = await supabaseAuth.auth.getClaims(token);
+    const userId = claimsRes?.claims?.sub;
+    if (claimsErr || !userId) {
+      console.error("getClaims failed:", claimsErr?.message);
       return new Response(
         JSON.stringify({ error: "Invalid authentication" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -130,7 +131,7 @@ serve(async (req) => {
     const { data: aiAccess } = await supabaseAuth
       .from("user_ai_access")
       .select("ai_enabled")
-      .eq("user_id", userRes.user.id)
+      .eq("user_id", userId)
       .maybeSingle();
     if (aiAccess && aiAccess.ai_enabled === false) {
       return new Response(
@@ -145,7 +146,7 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
     const { data: creditResult, error: creditErr } = await adminClient.rpc("consume_credits", {
-      _user_id: userRes.user.id,
+      _user_id: userId,
       _amount: 25,
     });
     if (creditErr) {
