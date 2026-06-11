@@ -110,8 +110,9 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
     const token = authHeader.replace(/^Bearer\s+/i, "").trim();
-    const { data: userRes, error: userErr } = await supabaseAuth.auth.getUser(token);
-    if (userErr || !userRes?.user) {
+    const { data: claimsRes, error: claimsErr } = await supabaseAuth.auth.getClaims(token);
+    const userId = claimsRes?.claims?.sub;
+    if (claimsErr || !userId) {
       return new Response(
         JSON.stringify({ error: "Invalid authentication" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -120,7 +121,7 @@ serve(async (req) => {
     const { data: aiAccess } = await supabaseAuth
       .from("user_ai_access")
       .select("ai_enabled")
-      .eq("user_id", userRes.user.id)
+      .eq("user_id", userId)
       .maybeSingle();
     if (aiAccess && aiAccess.ai_enabled === false) {
       return new Response(
