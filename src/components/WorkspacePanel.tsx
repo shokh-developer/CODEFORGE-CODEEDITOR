@@ -17,7 +17,7 @@ import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import {
   Bot, Send, Loader2, Code, Rocket, Sparkles, Wand2,
   MessageCircle, Trash2, FileCode, FilePlus, FolderPlus,
-  Bug, Copy, Check, ChevronDown
+  Bug, Copy, Check, ChevronDown, History, Plus, Settings2
 } from "lucide-react";
 import CreditBadge from "@/components/CreditBadge";
 
@@ -68,6 +68,12 @@ interface WorkspacePanelProps {
   onCreateFile: (name: string, path: string, isFolder: boolean, language?: string, content?: string) => Promise<any>;
   onUpdateFileContent: (fileId: string, content: string) => void;
   projectName?: string;
+}
+
+interface ConversationSummary {
+  id: string;
+  title: string;
+  updatedAt: Date;
 }
 
 type TabId = "buildforge" | "codeforge" | "chat";
@@ -154,6 +160,120 @@ const parseAIResponse = (content: string, language: string): { text: string; act
   }
 
   return { text: text.trim(), actions };
+};
+
+const getConversationTitle = (prompt: string) => prompt.replace(/\s+/g, " ").trim().slice(0, 56) || "New chat";
+
+const usePanelConversations = (scope: string) => {
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+
+  const reload = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setConversations([]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("ai_conversations" as any)
+      .select("id, title, updated_at")
+      .eq("user_id", user.id)
+      .eq("project_id", scope)
+      .order("updated_at", { ascending: false });
+
+    if (error) {
+      console.error("Failed to load conversations", error);
+      return;
+    }
+
+    setConversations(
+      ((data as any[]) || []).map((item) => ({
+        id: item.id,
+        title: item.title,
+        updatedAt: new Date(item.updated_at),
+      }))
+    );
+  }, [scope]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  const createConversation = useCallback(async (title: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data, error } = await supabase
+      .from("ai_conversations" as any)
+      .insert({ user_id: user.id, title: getConversationTitle(title), project_id: scope } as any)
+      .select("id")
+      .single();
+
+    if (error) {
+      console.error("Failed to create conversation", error);
+      return null;
+    }
+
+    await reload();
+    return (data as any)?.id as string | null;
+  }, [reload, scope]);
+
+  const persistMessage = useCallback(async (conversationId: string, role: Message["role"], content: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+
+    const { error } = await supabase.from("ai_messages" as any).insert({
+      conversation_id: conversationId,
+      user_id: user.id,
+      role,
+      content,
+    } as any);
+
+    if (error) {
+      console.error("Failed to persist message", error);
+      return false;
+    }
+
+    await supabase
+      .from("ai_conversations" as any)
+      .update({ updated_at: new Date().toISOString() } as any)
+      .eq("id", conversationId);
+
+    await reload();
+    return true;
+  }, [reload]);
+
+  const loadMessages = useCallback(async (conversationId: string) => {
+    const { data, error } = await supabase
+      .from("ai_messages" as any)
+      .select("id, role, content, created_at")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error("Failed to load messages", error);
+      return [] as Message[];
+    }
+
+    return ((data as any[]) || []).map((item) => ({
+      id: item.id,
+      role: item.role,
+      content: item.content,
+      timestamp: new Date(item.created_at),
+    }));
+  }, []);
+
+  const deleteConversation = useCallback(async (conversationId: string) => {
+    const { error } = await supabase.from("ai_conversations" as any).delete().eq("id", conversationId);
+    if (error) {
+      console.error("Failed to delete conversation", error);
+      return false;
+    }
+    await reload();
+    return true;
+  }, [reload]);
+
+  return { conversations, reload, createConversation, persistMessage, loadMessages, deleteConversation };
 };
 
 // ==================== BUILDFORGE AI PANEL ====================
