@@ -17,7 +17,7 @@ import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import {
   Bot, Send, Loader2, Code, Rocket, Sparkles, Wand2,
   MessageCircle, Trash2, FileCode, FilePlus, FolderPlus,
-  Bug, Copy, Check, ChevronDown, History, Plus, Settings2
+  Bug, Copy, Check, ChevronDown, History, Plus
 } from "lucide-react";
 import CreditBadge from "@/components/CreditBadge";
 
@@ -90,40 +90,45 @@ const BUILDFORGE_STARTERS = [
 
 // ==================== CODE BLOCK ====================
 
-const CodeBlock = ({ code, lang, onApply }: { code: string; lang: string; onApply?: () => void }) => {
+const CodeBlock = ({ code, lang }: { code: string; lang: string }) => {
   const [copied, setCopied] = useState(false);
   return (
     <div className="relative group my-2 rounded-lg overflow-hidden border border-border/40">
       <div className="flex items-center justify-between px-3 py-1 bg-muted/40 border-b border-border/30">
-        <span className="text-[10px] font-mono text-muted-foreground">{lang}</span>
-        <div className="flex gap-1">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-[10px] font-mono text-muted-foreground">{lang}</span>
+          <Badge variant="outline" className="h-4 rounded-sm border-primary/30 bg-primary/10 px-1.5 text-[8px] text-primary">
+            select + copy
+          </Badge>
+          <Badge variant="outline" className="h-4 rounded-sm border-border/50 bg-background/50 px-1.5 text-[8px] text-muted-foreground">
+            o‘zgarmasin
+          </Badge>
+        </div>
+        <div className="flex gap-1 flex-shrink-0">
           <button onClick={() => { navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 2000); }} className="p-1 rounded hover:bg-background/60">
             {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3 text-muted-foreground" />}
           </button>
-          {onApply && (
-            <button onClick={onApply} className="p-1 rounded hover:bg-background/60">
-              <FileCode className="h-3 w-3 text-primary" />
-            </button>
-          )}
         </div>
       </div>
-      <SyntaxHighlighter language={lang} style={vscDarkPlus} customStyle={{ margin: 0, fontSize: "11px", padding: "10px" }} showLineNumbers>
-        {code}
-      </SyntaxHighlighter>
+      <div className="selection:bg-primary/30 selection:text-primary-foreground">
+        <SyntaxHighlighter language={lang} style={vscDarkPlus} customStyle={{ margin: 0, fontSize: "11px", padding: "10px" }} showLineNumbers>
+          {code}
+        </SyntaxHighlighter>
+      </div>
     </div>
   );
 };
 
 // ==================== MARKDOWN RENDERER ====================
 
-const MarkdownContent = ({ content, language, onApplyCode }: { content: string; language: string; onApplyCode: (c: string) => void }) => (
+const MarkdownContent = ({ content, language }: { content: string; language: string }) => (
   <div className="prose prose-sm prose-invert max-w-none text-xs leading-relaxed break-words [overflow-wrap:anywhere] [word-break:break-word]">
     <ReactMarkdown
       components={{
         code({ className, children }) {
           const match = /language-(\w+)/.exec(className || "");
           const codeStr = String(children).replace(/\n$/, "");
-          if (match) return <CodeBlock code={codeStr} lang={match[1]} onApply={() => onApplyCode(codeStr)} />;
+          if (match) return <CodeBlock code={codeStr} lang={match[1]} />;
           return <code className="bg-muted/60 px-1 py-0.5 rounded text-[10px] font-mono text-primary">{children}</code>;
         },
         pre: ({ children }) => <>{children}</>,
