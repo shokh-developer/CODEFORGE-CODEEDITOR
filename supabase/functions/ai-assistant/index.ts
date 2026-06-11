@@ -117,8 +117,10 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
       { global: { headers: { Authorization: authHeader } } }
     );
-    const { data: userRes, error: userErr } = await supabaseAuth.auth.getUser();
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    const { data: userRes, error: userErr } = await supabaseAuth.auth.getUser(token);
     if (userErr || !userRes?.user) {
+      console.error("getUser failed:", userErr?.message);
       return new Response(
         JSON.stringify({ error: "Invalid authentication" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
