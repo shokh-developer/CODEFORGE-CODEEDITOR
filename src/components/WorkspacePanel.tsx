@@ -432,7 +432,7 @@ const BuildForgePanel = ({ roomId, code, language, files, activeFile, onCreateFi
                 </Avatar>
                 <div className={cn("flex-1 min-w-0 max-w-full overflow-hidden p-2.5 rounded-md text-xs", msg.role === "user" ? "bg-secondary" : "bg-muted border border-border")}>
                   {msg.role === "assistant" ? (
-                    <MarkdownContent content={msg.content} language={language} onApplyCode={(c) => activeFile && onUpdateFileContent(activeFile.id, c)} />
+                    <MarkdownContent content={msg.content} language={language} />
                   ) : (
                     <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{msg.content}</span>
                   )}
@@ -799,7 +799,7 @@ const WorkspacePanel = ({
       {/* Panel content */}
       <div className="flex-1 overflow-hidden">
         {activeTab === "buildforge" && (
-          <BuildForgePanel code={code} language={language} files={files} activeFile={activeFile}
+          <BuildForgePanel roomId={roomId} code={code} language={language} files={files} activeFile={activeFile}
             onCreateFile={onCreateFile} onUpdateFileContent={onUpdateFileContent} projectName={projectName} />
         )}
         {activeTab === "codeforge" && (
