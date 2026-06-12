@@ -799,7 +799,7 @@ const WorkspacePanel = ({
       {/* Panel content */}
       <div className="flex-1 overflow-hidden">
         {activeTab === "buildforge" && (
-          <BuildForgePanel code={code} language={language} files={files} activeFile={activeFile}
+          <BuildForgePanel roomId={roomId} code={code} language={language} files={files} activeFile={activeFile}
             onCreateFile={onCreateFile} onUpdateFileContent={onUpdateFileContent} projectName={projectName} />
         )}
         {activeTab === "codeforge" && (
