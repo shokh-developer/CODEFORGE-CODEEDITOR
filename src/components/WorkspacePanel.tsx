@@ -675,7 +675,20 @@ const CodeForgePanel = ({ code, language, files, activeFile, onCreateFile, onUpd
                   </Avatar>
                   <div className={cn("flex-1 p-2.5 rounded-md text-xs min-w-0 max-w-full overflow-hidden", msg.role === "user" ? "bg-secondary" : "bg-muted border border-border")}>
                     {msg.role === "assistant" ? (
-                      <MarkdownContent content={msg.content} language={language} />
+                      <MarkdownContent
+                        content={msg.content}
+                        language={language}
+                        files={files}
+                        onApplyBlock={async (block, existing) => {
+                          if (existing) {
+                            await onUpdateFileContent(existing.id, block.content);
+                            toast({ title: "Fayl yangilandi", description: block.fullPath });
+                          } else {
+                            await onCreateFile(block.name, block.dir, false, block.language, block.content);
+                            toast({ title: "Fayl yaratildi", description: block.fullPath });
+                          }
+                        }}
+                      />
                     ) : (
                       <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{msg.content}</span>
                     )}
