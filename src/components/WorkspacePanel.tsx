@@ -115,8 +115,6 @@ const CodeBlock = ({ code, lang }: { code: string; lang: string }) => {
 
 // ==================== MARKDOWN RENDERER WITH DIFF APPROVAL ====================
 
-import DiffApprovalCard from "@/components/DiffApprovalCard";
-import { parseAIFileBlocks, type FileBlock } from "@/lib/ai-file-blocks";
 
 interface MarkdownContentProps {
   content: string;
