@@ -20,6 +20,8 @@ import {
   Bug, Copy, Check, ChevronDown, History, Plus
 } from "lucide-react";
 import CreditBadge from "@/components/CreditBadge";
+import DiffApprovalCard from "@/components/DiffApprovalCard";
+import { parseAIFileBlocks, type FileBlock } from "@/lib/ai-file-blocks";
 
 // ==================== TYPES ====================
 
