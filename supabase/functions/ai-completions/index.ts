@@ -156,6 +156,8 @@ serve(async (req) => {
       );
     }
 
+    const { code, language, cursorPosition, projectContext, type } = await req.json();
+
     let systemPrompt = "";
     let userPrompt = "";
 
