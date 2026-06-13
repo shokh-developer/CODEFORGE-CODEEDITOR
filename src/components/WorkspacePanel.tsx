@@ -88,30 +88,24 @@ const BUILDFORGE_STARTERS = [
   "Admin dashboard with charts and reusable components",
 ];
 
-// ==================== CODE BLOCK ====================
+// ==================== CODE BLOCK (read-only, no apply) ====================
 
 const CodeBlock = ({ code, lang }: { code: string; lang: string }) => {
   const [copied, setCopied] = useState(false);
   return (
-    <div className="relative group my-2 rounded-lg overflow-hidden border border-border/40">
-      <div className="flex items-center justify-between px-3 py-1 bg-muted/40 border-b border-border/30">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-[10px] font-mono text-muted-foreground">{lang}</span>
-          <Badge variant="outline" className="h-4 rounded-sm border-primary/30 bg-primary/10 px-1.5 text-[8px] text-primary">
-            select + copy
-          </Badge>
-          <Badge variant="outline" className="h-4 rounded-sm border-border/50 bg-background/50 px-1.5 text-[8px] text-muted-foreground">
-            o‘zgarmasin
-          </Badge>
-        </div>
-        <div className="flex gap-1 flex-shrink-0">
-          <button onClick={() => { navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 2000); }} className="p-1 rounded hover:bg-background/60">
-            {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3 text-muted-foreground" />}
-          </button>
-        </div>
+    <div className="relative group my-2 rounded-md overflow-hidden border border-border">
+      <div className="flex items-center justify-between px-2.5 py-1 bg-muted/40 border-b border-border">
+        <span className="text-[10px] font-mono text-muted-foreground">{lang}</span>
+        <button
+          onClick={() => { navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
+          className="p-1 rounded hover:bg-background/60"
+          title="Copy"
+        >
+          {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3 text-muted-foreground" />}
+        </button>
       </div>
-      <div className="selection:bg-primary/30 selection:text-primary-foreground">
-        <SyntaxHighlighter language={lang} style={vscDarkPlus} customStyle={{ margin: 0, fontSize: "11px", padding: "10px" }} showLineNumbers>
+      <div className="selection:bg-primary/30">
+        <SyntaxHighlighter language={lang} style={vscDarkPlus} customStyle={{ margin: 0, fontSize: "11px", padding: "8px" }}>
           {code}
         </SyntaxHighlighter>
       </div>
@@ -119,26 +113,84 @@ const CodeBlock = ({ code, lang }: { code: string; lang: string }) => {
   );
 };
 
-// ==================== MARKDOWN RENDERER ====================
+// ==================== MARKDOWN RENDERER WITH DIFF APPROVAL ====================
 
-const MarkdownContent = ({ content, language }: { content: string; language: string }) => (
-  <div className="prose prose-sm prose-invert max-w-none text-xs leading-relaxed break-words [overflow-wrap:anywhere] [word-break:break-word]">
-    <ReactMarkdown
-      components={{
-        code({ className, children }) {
-          const match = /language-(\w+)/.exec(className || "");
-          const codeStr = String(children).replace(/\n$/, "");
-          if (match) return <CodeBlock code={codeStr} lang={match[1]} />;
-          return <code className="bg-muted/60 px-1 py-0.5 rounded text-[10px] font-mono text-primary">{children}</code>;
-        },
-        pre: ({ children }) => <>{children}</>,
-        p: ({ children }) => <p className="my-1">{children}</p>,
-      }}
-    >
-      {content}
-    </ReactMarkdown>
-  </div>
-);
+import DiffApprovalCard from "@/components/DiffApprovalCard";
+import { parseAIFileBlocks, type FileBlock } from "@/lib/ai-file-blocks";
+
+interface MarkdownContentProps {
+  content: string;
+  language: string;
+  files?: FileItem[];
+  onApplyBlock?: (block: FileBlock, existing?: FileItem | null) => Promise<void> | void;
+}
+
+const MarkdownContent = ({ content, language, files = [], onApplyBlock }: MarkdownContentProps) => {
+  const { text, blocks } = useMemo(() => parseAIFileBlocks(content), [content]);
+  const [statuses, setStatuses] = useState<Record<number, "pending" | "accepted" | "rejected" | "working">>({});
+
+  const findExisting = (block: FileBlock) =>
+    files.find(f => !f.is_folder && (f.path + f.name) === block.fullPath) || null;
+
+  const handleAccept = async (idx: number, block: FileBlock) => {
+    if (!onApplyBlock) return;
+    setStatuses(s => ({ ...s, [idx]: "working" }));
+    try {
+      await onApplyBlock(block, findExisting(block));
+      setStatuses(s => ({ ...s, [idx]: "accepted" }));
+    } catch {
+      setStatuses(s => ({ ...s, [idx]: "pending" }));
+    }
+  };
+
+  const handleAcceptAll = async () => {
+    for (let i = 0; i < blocks.length; i++) {
+      if (statuses[i] === "accepted") continue;
+      await handleAccept(i, blocks[i]);
+    }
+  };
+
+  return (
+    <div className="prose prose-sm prose-invert max-w-none text-xs leading-relaxed break-words [overflow-wrap:anywhere] [word-break:break-word]">
+      {blocks.length > 1 && onApplyBlock && (
+        <div className="flex items-center justify-between mb-2 px-2 py-1 rounded-md border border-border bg-muted/30">
+          <span className="text-[10px] text-muted-foreground">{blocks.length} ta fayl o'zgarishi</span>
+          <button
+            onClick={handleAcceptAll}
+            className="h-6 px-2 rounded text-[10px] font-medium bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            Hammasini qabul qilish
+          </button>
+        </div>
+      )}
+      <ReactMarkdown
+        components={{
+          code({ className, children }) {
+            const match = /language-(\w+)/.exec(className || "");
+            const codeStr = String(children).replace(/\n$/, "");
+            if (match) return <CodeBlock code={codeStr} lang={match[1]} />;
+            return <code className="bg-muted/60 px-1 py-0.5 rounded text-[10px] font-mono text-primary">{children}</code>;
+          },
+          pre: ({ children }) => <>{children}</>,
+          p: ({ children }) => <p className="my-1">{children}</p>,
+        }}
+      >
+        {text}
+      </ReactMarkdown>
+      {blocks.map((block, i) => (
+        <DiffApprovalCard
+          key={`${block.fullPath}-${i}`}
+          block={block}
+          existing={findExisting(block)}
+          status={statuses[i] || "pending"}
+          onAccept={() => handleAccept(i, block)}
+          onReject={() => setStatuses(s => ({ ...s, [i]: "rejected" }))}
+        />
+      ))}
+    </div>
+  );
+};
+
 
 // ==================== PARSE AI RESPONSE ====================
 
