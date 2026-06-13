@@ -151,10 +151,15 @@ serve(async (req) => {
     });
     if (creditErr) {
       console.error("consume_credits error:", creditErr);
-    } else if (creditResult && (creditResult as any).ok === false) {
+      return new Response(
+        JSON.stringify({ error: "Credit tekshiruvi muvaffaqiyatsiz. Qayta urinib ko'ring." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (!creditResult || (creditResult as any).ok === false) {
       return new Response(
         JSON.stringify({
-          error: `Kunlik credit limitingiz tugadi. Balans: ${(creditResult as any).balance}/${(creditResult as any).daily_limit}. Ertaga yangilanadi yoki planni yangilang.`,
+          error: `Kunlik credit limitingiz tugadi. Balans: ${(creditResult as any)?.balance ?? 0}/${(creditResult as any)?.daily_limit ?? 0}. Ertaga yangilanadi yoki planni yangilang.`,
           credits: creditResult,
         }),
         { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
