@@ -130,7 +130,31 @@ serve(async (req) => {
       );
     }
 
-    const { code, language, cursorPosition, projectContext, type } = await req.json();
+    // Credit deduction (10 per completion request — cheaper than full chat)
+    const adminClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+    const { data: creditResult, error: creditErr } = await adminClient.rpc("consume_credits", {
+      _user_id: userId,
+      _amount: 10,
+    });
+    if (creditErr) {
+      console.error("consume_credits error:", creditErr);
+      return new Response(
+        JSON.stringify({ error: "Credit tekshiruvi muvaffaqiyatsiz." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (!creditResult || (creditResult as any).ok === false) {
+      return new Response(
+        JSON.stringify({
+          error: `Kunlik credit limitingiz tugadi. Balans: ${(creditResult as any)?.balance ?? 0}/${(creditResult as any)?.daily_limit ?? 0}.`,
+          credits: creditResult,
+        }),
+        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     let systemPrompt = "";
     let userPrompt = "";
