@@ -88,25 +88,54 @@ const Terminal = ({ isOpen, onToggle, code, language: rawLanguage, files, active
   };
 
   const runCodeInBrowser = () => {
-    try {
-      const customConsole = {
-        log: (...args: any[]) => addLog("log", args.map(formatValue).join(" ")),
-        error: (...args: any[]) => addLog("error", args.map(formatValue).join(" ")),
-        warn: (...args: any[]) => addLog("warn", args.map(formatValue).join(" ")),
-        info: (...args: any[]) => addLog("info", args.map(formatValue).join(" ")),
-      };
-      const sandboxCode = `(function(console) { "use strict"; ${code} })`;
-      try {
-        const fn = eval(sandboxCode);
-        const result = fn(customConsole);
-        if (result !== undefined) addLog("result", `↳ ${formatValue(result)}`);
-        addLog("info", "Code executed successfully.");
-      } catch (err: any) {
-        addLog("error", `Error: ${err.message}`);
+    // Sandboxed iframe (no allow-same-origin) — user code cannot reach window/document/localStorage
+    const iframe = document.createElement("iframe");
+    iframe.setAttribute("sandbox", "allow-scripts");
+    iframe.style.display = "none";
+
+    const runnerHtml = `<!doctype html><html><body><script>
+      (function(){
+        const send = (type, content) => parent.postMessage({ __cf_log: true, type, content }, "*");
+        const fmt = (v) => { try { return typeof v === 'object' ? JSON.stringify(v, null, 2) : String(v); } catch(e){ return String(v); } };
+        const c = {
+          log:  (...a) => send("log",   a.map(fmt).join(" ")),
+          error:(...a) => send("error", a.map(fmt).join(" ")),
+          warn: (...a) => send("warn",  a.map(fmt).join(" ")),
+          info: (...a) => send("info",  a.map(fmt).join(" ")),
+        };
+        window.addEventListener("error", e => send("error", "Error: " + e.message));
+        try {
+          const fn = new Function("console", ${JSON.stringify(code)});
+          const r = fn(c);
+          if (r !== undefined) send("result", "↳ " + fmt(r));
+          send("info", "Code executed successfully.");
+        } catch (err) {
+          send("error", "Error: " + (err && err.message ? err.message : String(err)));
+        } finally {
+          setTimeout(() => send("__done", ""), 50);
+        }
+      })();
+    <\/script></body></html>`;
+
+    const onMessage = (e: MessageEvent) => {
+      const m = e.data;
+      if (!m || !m.__cf_log) return;
+      if (m.type === "__done") {
+        window.removeEventListener("message", onMessage);
+        iframe.remove();
+        return;
       }
-    } catch (err: any) {
-      addLog("error", `Error: ${err.message}`);
-    }
+      addLog(m.type as LogEntry["type"], m.content);
+    };
+    window.addEventListener("message", onMessage);
+
+    iframe.srcdoc = runnerHtml;
+    document.body.appendChild(iframe);
+    // Safety: auto-cleanup after 10s
+    setTimeout(() => {
+      window.removeEventListener("message", onMessage);
+      if (iframe.parentNode) iframe.remove();
+    }, 10000);
   };
 
   const runCodeOnServer = async (stdin: string = "") => {
