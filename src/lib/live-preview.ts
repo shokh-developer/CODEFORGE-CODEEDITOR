@@ -143,18 +143,28 @@ const createBundledPreviewHtml = (files: PreviewFileItem[]) => {
   ${headMarkup}
   <style>
     body { margin: 0; }
-    #__preview_error__ { display: none; padding: 16px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; color: #fecaca; background: #450a0a; }
+    #__preview_error__ { display: none; padding: 16px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; color: #fecaca; background: #450a0a; border-radius: 6px; margin: 8px; }
+    #__preview_loading__ { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0f172a; color: #94a3b8; font-family: system-ui, sans-serif; font-size: 13px; gap: 12px; z-index: 9999; }
+    #__preview_loading__ svg { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
   <script async src="https://ga.jspm.io/npm:es-module-shims@1.10.0/dist/es-module-shims.js"></script>
   <script type="importmap">${safeSerialize(importMap)}</script>
 </head>
 <body>
+  <div id="__preview_loading__">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+    </svg>
+    <span>Building preview…</span>
+  </div>
   ${bodyMarkup}
   <pre id="__preview_error__"></pre>
   <script type="module">
     const files = ${safeSerialize(fileMap)};
     const entryPath = ${safeSerialize(inferredEntry)};
     const errorNode = document.getElementById("__preview_error__");
+    const loadingNode = document.getElementById("__preview_loading__");
 
     const normalizePath = (value) => {
       const normalized = ("/" + value).replace(/\\/+/g, "/");
@@ -203,6 +213,7 @@ const createBundledPreviewHtml = (files: PreviewFileItem[]) => {
     };
 
     const showError = (error) => {
+      if (loadingNode) loadingNode.style.display = "none";
       errorNode.style.display = "block";
       errorNode.textContent = error instanceof Error ? (error.message + "\n\n" + (error.stack || "")) : String(error);
       console.error(error);
@@ -239,7 +250,7 @@ const createBundledPreviewHtml = (files: PreviewFileItem[]) => {
 
             if (args.path.endsWith(".css")) {
               return {
-                contents: "const style = document.createElement(\"style\"); style.textContent = " + JSON.stringify(source) + "; document.head.appendChild(style); export default {};",
+                contents: "const style = document.createElement('style'); style.textContent = " + JSON.stringify(source) + "; document.head.appendChild(style); export default {};",
                 loader: "js",
               };
             }
@@ -267,6 +278,7 @@ const createBundledPreviewHtml = (files: PreviewFileItem[]) => {
       if (!bundledFile) throw new Error("Preview bundle was not generated.");
 
       const bundledUrl = URL.createObjectURL(new Blob([bundledFile.text], { type: "text/javascript" }));
+      if (loadingNode) loadingNode.style.display = "none";
       await import(bundledUrl);
     } catch (error) {
       showError(error);

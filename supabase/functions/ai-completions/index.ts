@@ -9,9 +9,9 @@ const corsHeaders = {
 // Try Google Gemini with rotating keys, fallback to Lovable AI
 async function callAI(systemPrompt: string, userPrompt: string, temperature: number, maxTokens: number): Promise<string> {
   const googleKeys = [
-    Deno.env.get("GOOGLE_AI_KEY_1"),
-    Deno.env.get("GOOGLE_AI_KEY_2"),
-    Deno.env.get("GOOGLE_AI_KEY_3"),
+    Deno.env.get("AIzaSyAuthagoNQTexH9eTpR02MMD-nLBS58nak"),
+    Deno.env.get("AIzaSyDRdnGMHHc2pgIpTyDUlIIH24bDziImLuE"),
+    Deno.env.get("AIzaSyCeF0Nfkp-4cYucuuDAJJ4tvvEHv6SQiGM"),
   ].filter(Boolean) as string[];
 
   // Shuffle for rotation
@@ -130,33 +130,35 @@ serve(async (req) => {
       );
     }
 
-    // Credit deduction (10 per completion request — cheaper than full chat)
+    const { code, language, cursorPosition, projectContext, type } = await req.json();
+
+    // --- Credit deduction: 1 credit for inline, 5 for analysis operations ---
     const adminClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
+    const creditAmount = type === "inline" ? 1 : 5;
     const { data: creditResult, error: creditErr } = await adminClient.rpc("consume_credits", {
       _user_id: userId,
-      _amount: 10,
+      _amount: creditAmount,
     });
     if (creditErr) {
       console.error("consume_credits error:", creditErr);
       return new Response(
-        JSON.stringify({ error: "Credit tekshiruvi muvaffaqiyatsiz." }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Credit service unavailable. Please try again." }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    if (!creditResult || (creditResult as any).ok === false) {
+    if (creditResult && (creditResult as { ok: boolean; balance: number; daily_limit: number }).ok === false) {
+      const r = creditResult as { ok: boolean; balance: number; daily_limit: number };
       return new Response(
         JSON.stringify({
-          error: `Kunlik credit limitingiz tugadi. Balans: ${(creditResult as any)?.balance ?? 0}/${(creditResult as any)?.daily_limit ?? 0}.`,
+          error: `Kunlik credit limitingiz tugadi. Balans: ${r.balance}/${r.daily_limit}. Ertaga yangilanadi yoki planni yangilang.`,
           credits: creditResult,
         }),
         { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    const { code, language, cursorPosition, projectContext, type } = await req.json();
 
     let systemPrompt = "";
     let userPrompt = "";

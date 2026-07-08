@@ -14,12 +14,32 @@ import AdminPanel from "@/components/AdminPanel";
 import LivePreview from "@/components/LivePreview";
 import WorkspacePanel from "@/components/WorkspacePanel";
 import { Button } from "@/components/ui/button";
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
+import type { ImperativePanelHandle } from "react-resizable-panels";
 import { ArrowLeft, Loader2, PanelLeftClose, PanelLeft, Eye, EyeOff, Bot, BotOff } from "lucide-react";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { debounce } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
+
+// ── Resize handle: vertical divider (col-resize) ───────────────────────────
+const HHandle = () => (
+  <PanelResizeHandle className="group relative w-[4px] flex-shrink-0 bg-border/50 hover:bg-primary/50 transition-colors duration-150 cursor-col-resize z-10">
+    <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-[2px] flex items-center justify-center pointer-events-none">
+      <div className="h-8 w-[2px] rounded-full bg-muted-foreground/20 group-hover:bg-primary/60 transition-colors duration-150" />
+    </div>
+  </PanelResizeHandle>
+);
+
+// ── Resize handle: horizontal divider (row-resize) ─────────────────────────
+const VHandle = () => (
+  <PanelResizeHandle className="group relative h-[4px] flex-shrink-0 bg-border/50 hover:bg-primary/50 transition-colors duration-150 cursor-row-resize z-10">
+    <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[2px] flex items-center justify-center pointer-events-none">
+      <div className="w-8 h-[2px] rounded-full bg-muted-foreground/20 group-hover:bg-primary/60 transition-colors duration-150" />
+    </div>
+  </PanelResizeHandle>
+);
 
 const Room = () => {
   const { id } = useParams<{ id: string }>();
@@ -30,7 +50,7 @@ const Room = () => {
   const { user, isAuthenticated } = useAuth();
   const {
     files, activeFile, setActiveFile, loading: filesLoading,
-    createFile, updateFileContent, deleteFile, renameFile,
+    createFile, batchCreateFiles, updateFileContent, refreshFiles, deleteFile, renameFile,
   } = useFiles(room?.id || null);
   const { onlineUsers } = usePresence(room?.id || null);
   const { isModerator } = useAdmin();
@@ -42,9 +62,25 @@ const Room = () => {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
 
+  // Ref for programmatic collapse/expand of the sidebar Panel on desktop
+  const sidebarRef = useRef<ImperativePanelHandle>(null);
+
+  // Toggle sidebar: on mobile use state directly; on desktop use the Panel API
+  const handleSidebarToggle = () => {
+    if (isMobile) {
+      setSidebarOpen(prev => !prev);
+      return;
+    }
+    if (sidebarOpen) {
+      sidebarRef.current?.collapse();
+    } else {
+      sidebarRef.current?.expand();
+    }
+  };
+
   useEffect(() => {
     if (isMobile) setSidebarOpen(false);
-  }, [activeFile?.id]);
+  }, [activeFile?.id, isMobile]);
 
   const checkRoomAccess = useCallback(
     async (roomId: string) => {
@@ -79,7 +115,7 @@ const Room = () => {
       }
     };
     enterRoom();
-  }, [room?.id, isAuthenticated, user?.id, checkRoomAccess, navigate, toast]);
+  }, [room?.id, isAuthenticated, user, checkRoomAccess, navigate, toast]);
 
   useEffect(() => {
     if (!room?.id || !user?.id) return;
@@ -111,8 +147,8 @@ const Room = () => {
   }, [room?.id, user?.id, navigate, toast]);
 
   useEffect(() => {
-    if (activeFile && activeFile.content !== localContent) setLocalContent(activeFile.content);
-  }, [activeFile?.content]);
+    if (activeFile) setLocalContent(activeFile.content);
+  }, [activeFile]);
 
   const handleFileSelect = (file: typeof activeFile) => {
     if (!file || file.is_folder) return;
@@ -121,8 +157,8 @@ const Room = () => {
     if (!openTabs.includes(file.id)) setOpenTabs(prev => [...prev, file.id]);
   };
 
-  const debouncedSave = useCallback(
-    debounce((fileId: string, content: string) => { updateFileContent(fileId, content); }, 500),
+  const debouncedSave = useMemo(
+    () => debounce((fileId: string, content: string) => { updateFileContent(fileId, content); }, 500),
     [updateFileContent]
   );
 
@@ -181,13 +217,19 @@ const Room = () => {
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center h-10 bg-card border-b border-border flex-shrink-0">
-        <button onClick={() => navigate("/")} className="h-10 w-10 flex items-center justify-center hover:bg-secondary transition-colors duration-150 border-r border-border">
-          <ArrowLeft className="h-4 w-4 text-muted-foreground" />
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <div className="flex items-center h-8 bg-card border-b border-border flex-shrink-0">
+        <button
+          onClick={() => navigate("/")}
+          className="h-8 w-8 flex items-center justify-center hover:bg-secondary transition-colors duration-150 border-r border-border"
+        >
+          <ArrowLeft className="h-3.5 w-3.5 text-muted-foreground" />
         </button>
-        <button onClick={() => setSidebarOpen(!sidebarOpen)} className="h-10 w-10 flex items-center justify-center hover:bg-secondary transition-colors duration-150 border-r border-border">
-          {sidebarOpen ? <PanelLeftClose className="h-4 w-4 text-muted-foreground" /> : <PanelLeft className="h-4 w-4 text-muted-foreground" />}
+        <button
+          onClick={handleSidebarToggle}
+          className="h-8 w-8 flex items-center justify-center hover:bg-secondary transition-colors duration-150 border-r border-border"
+        >
+          {sidebarOpen ? <PanelLeftClose className="h-3.5 w-3.5 text-muted-foreground" /> : <PanelLeft className="h-3.5 w-3.5 text-muted-foreground" />}
         </button>
         {isModerator && (
           <div className="flex items-center border-r border-border px-1.5">
@@ -216,85 +258,183 @@ const Room = () => {
             }}
           />
         </div>
-        {/* Preview toggle */}
         <button
           onClick={() => setPreviewOpen(!previewOpen)}
-          className={`h-10 w-10 flex items-center justify-center hover:bg-secondary transition-colors duration-150 border-l border-border ${previewOpen ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
+          className={`h-8 w-8 flex items-center justify-center hover:bg-secondary transition-colors duration-150 border-l border-border ${previewOpen ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
           title={previewOpen ? "Close preview" : "Live preview"}
         >
-          {previewOpen ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          {previewOpen ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
         </button>
-        {/* Panel toggle */}
         <button
           onClick={() => setPanelOpen(!panelOpen)}
-          className={`h-10 w-10 flex items-center justify-center hover:bg-secondary transition-colors duration-150 border-l border-border ${panelOpen ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
+          className={`h-8 w-8 flex items-center justify-center hover:bg-secondary transition-colors duration-150 border-l border-border ${panelOpen ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
           title={panelOpen ? "Close AI panel" : "Open AI panel"}
         >
-          {panelOpen ? <BotOff className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+          {panelOpen ? <BotOff className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
         </button>
       </div>
 
-      {/* Main content */}
-      <div className="flex-1 flex overflow-hidden relative">
-        {/* Mobile sidebar overlay */}
+      {/* ── Main content ───────────────────────────────────────────────────── */}
+      <div className="flex-1 overflow-hidden relative">
+
+        {/* Mobile: sidebar as absolute overlay (outside PanelGroup) */}
         {isMobile && sidebarOpen && (
-          <div className="absolute inset-0 bg-background/60 backdrop-blur-sm z-20" onClick={() => setSidebarOpen(false)} />
-        )}
-
-        {/* Sidebar */}
-        <div
-          className={`${isMobile ? 'absolute z-30 h-full' : 'relative'} overflow-hidden transition-all duration-150 ease-out`}
-          style={{ width: sidebarOpen ? (isMobile ? '260px' : '240px') : '0px' }}
-        >
-          <div className={`${isMobile ? 'w-[260px]' : 'w-[240px]'} h-full`}>
-            <FileExplorer
-              files={files} activeFileId={activeFile?.id || null} onFileSelect={handleFileSelect}
-              onCreateFile={handleCreateFile} onDeleteFile={deleteFile} onRenameFile={renameFile}
+          <>
+            <div
+              className="absolute inset-0 bg-background/60 backdrop-blur-sm z-20"
+              onClick={() => setSidebarOpen(false)}
             />
-          </div>
-        </div>
-
-        {/* Editor area */}
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-          <EditorTabs
-            tabs={openTabFiles.map(f => ({ id: f.id, name: f.name, language: f.language }))}
-            activeTabId={activeFile?.id || null} onTabSelect={handleTabSelect} onTabClose={handleTabClose}
-          />
-          <div className="flex-1 overflow-hidden">
-            {activeFile ? (
-              <CodeEditorWithAI code={localContent} language={activeFile.language} onChange={handleCodeChange} files={files} />
-            ) : (
-              <EditorWelcome />
-            )}
-          </div>
-          <Terminal isOpen={terminalOpen} onToggle={() => setTerminalOpen(!terminalOpen)} code={localContent} language={activeFile?.language || "javascript"} files={files} activeFile={activeFile} />
-          <StatusBar language={activeFile?.language || "plaintext"} fileName={activeFile?.name} />
-        </div>
-
-        {/* Live Preview */}
-        {previewOpen && (
-          <div className="w-[40%] h-full border-l border-border">
-            <LivePreview files={files} activeFile={activeFile} isOpen={previewOpen} onToggle={() => setPreviewOpen(false)} />
-          </div>
+            <div className="absolute left-0 top-0 h-full w-[260px] z-30">
+              <FileExplorer
+                files={files} activeFileId={activeFile?.id || null} onFileSelect={handleFileSelect}
+                onCreateFile={handleCreateFile} onDeleteFile={deleteFile} onRenameFile={renameFile}
+              />
+            </div>
+          </>
         )}
 
-        {/* Workspace Panel (BuildForge AI / CodeForge AI / Team Chat) */}
-        {panelOpen && (
-          <div className="w-[360px] h-full flex-shrink-0 border-l border-border bg-card">
-            <WorkspacePanel
-              isOpen={panelOpen}
-              onToggle={() => setPanelOpen(!panelOpen)}
-              roomId={id || ""}
-              code={localContent}
-              language={activeFile?.language || "javascript"}
-              files={files}
-              activeFile={activeFile}
-              onCreateFile={async (name, path, isFolder, language, content) => await createFile(name, path, isFolder, language, content)}
-              onUpdateFileContent={(fileId, content) => { updateFileContent(fileId, content); setLocalContent(content); }}
-              projectName={room.name}
-            />
-          </div>
-        )}
+        {/* ── Horizontal PanelGroup: sidebar | editor | preview | AI ──────── */}
+        <PanelGroup direction="horizontal" className="h-full">
+
+          {/* ① SIDEBAR — desktop only, collapsible */}
+          {!isMobile && (
+            <Panel
+              ref={sidebarRef}
+              collapsible
+              collapsedSize={0}
+              defaultSize={18}
+              minSize={10}
+              maxSize={35}
+              onCollapse={() => setSidebarOpen(false)}
+              onExpand={() => setSidebarOpen(true)}
+              className="overflow-hidden"
+            >
+              <FileExplorer
+                files={files} activeFileId={activeFile?.id || null} onFileSelect={handleFileSelect}
+                onCreateFile={handleCreateFile} onDeleteFile={deleteFile} onRenameFile={renameFile}
+              />
+            </Panel>
+          )}
+          {!isMobile && <HHandle />}
+
+          {/* ② CENTER — editor area + terminal (vertical split) */}
+          <Panel minSize={20} className="overflow-hidden">
+            <div className="h-full flex flex-col">
+              {/* Tabs bar — fixed height, outside inner PanelGroup */}
+              <EditorTabs
+                tabs={openTabFiles.map(f => ({ id: f.id, name: f.name, language: f.language }))}
+                activeTabId={activeFile?.id || null} onTabSelect={handleTabSelect} onTabClose={handleTabClose}
+              />
+
+              {/* Vertical split when terminal is open */}
+              {terminalOpen ? (
+                <PanelGroup direction="vertical" className="flex-1 min-h-0">
+                  {/* Editor */}
+                  <Panel minSize={20} className="overflow-hidden">
+                    {activeFile ? (
+                      <CodeEditorWithAI
+                        code={localContent} language={activeFile.language}
+                        onChange={handleCodeChange} files={files}
+                      />
+                    ) : (
+                      <EditorWelcome />
+                    )}
+                  </Panel>
+
+                  <VHandle />
+
+                  {/* Terminal (resizable) */}
+                  <Panel defaultSize={25} minSize={8} maxSize={55} className="overflow-hidden">
+                    <Terminal
+                      isOpen={true}
+                      onToggle={() => setTerminalOpen(false)}
+                      code={localContent}
+                      language={activeFile?.language || "javascript"}
+                      files={files}
+                      activeFile={activeFile}
+                    />
+                  </Panel>
+                </PanelGroup>
+              ) : (
+                /* Terminal collapsed — normal flex column */
+                <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                  <div className="flex-1 overflow-hidden">
+                    {activeFile ? (
+                      <CodeEditorWithAI
+                        code={localContent} language={activeFile.language}
+                        onChange={handleCodeChange} files={files}
+                      />
+                    ) : (
+                      <EditorWelcome />
+                    )}
+                  </div>
+                  <Terminal
+                    isOpen={false}
+                    onToggle={() => setTerminalOpen(true)}
+                    code={localContent}
+                    language={activeFile?.language || "javascript"}
+                    files={files}
+                    activeFile={activeFile}
+                  />
+                </div>
+              )}
+
+              {/* Status bar — fixed height, outside inner PanelGroup */}
+              <StatusBar language={activeFile?.language || "plaintext"} fileName={activeFile?.name} />
+            </div>
+          </Panel>
+
+          {/* ③ LIVE PREVIEW — shown when previewOpen */}
+          {previewOpen && (
+            <>
+              <HHandle />
+              <Panel defaultSize={38} minSize={20} maxSize={65} className="overflow-hidden">
+                <LivePreview
+                  files={files} activeFile={activeFile}
+                  isOpen={previewOpen} onToggle={() => setPreviewOpen(false)}
+                />
+              </Panel>
+            </>
+          )}
+
+          {/* ④ AI PANEL — shown when panelOpen */}
+          {panelOpen && (
+            <>
+              <HHandle />
+              <Panel defaultSize={28} minSize={18} maxSize={50} className="overflow-hidden bg-card">
+                <WorkspacePanel
+                  isOpen={panelOpen}
+                  onToggle={() => setPanelOpen(!panelOpen)}
+                  roomId={id || ""}
+                  code={localContent}
+                  language={activeFile?.language || "javascript"}
+                  files={files}
+                  activeFile={activeFile}
+                  onCreateFile={async (name, path, isFolder, language, content) =>
+                    await createFile(name, path, isFolder, language, content)
+                  }
+                  onBatchCreateFiles={batchCreateFiles}
+                  onRefreshFiles={refreshFiles}
+                  onUpdateFileContent={(fileId, content) => {
+                    updateFileContent(fileId, content);
+                    if (activeFile?.id === fileId) {
+                      setLocalContent(content);
+                    } else {
+                      const edited = files.find(f => f.id === fileId);
+                      if (edited && !edited.is_folder) {
+                        setActiveFile({ ...edited, content });
+                        setLocalContent(content);
+                        setOpenTabs(prev => prev.includes(fileId) ? prev : [...prev, fileId]);
+                      }
+                    }
+                  }}
+                  projectName={room.name}
+                />
+              </Panel>
+            </>
+          )}
+
+        </PanelGroup>
       </div>
     </div>
   );

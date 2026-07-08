@@ -1,4 +1,4 @@
-import { Users, Copy, Check, Wifi, Share2, Hash, Code } from "lucide-react";
+import { Users, Check, Share2, Hash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -32,34 +32,48 @@ const EditorHeader = ({ roomId, roomName, activeFileName, onlineUsers = 1, files
   };
 
   return (
-    <div className="flex items-center justify-between h-10 px-3">
-      <div className="flex items-center gap-2 min-w-0">
-        <h1 className="text-xs font-semibold text-foreground truncate">{roomName}</h1>
-        <button onClick={copyRoomId} className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-secondary hover:bg-muted transition-colors duration-150 flex-shrink-0" title="Copy room ID">
-          <Hash className="h-2.5 w-2.5 text-muted-foreground" />
-          <span className="text-[10px] text-muted-foreground font-jetbrains">{shortId}</span>
+    <div className="flex items-center justify-between h-full px-2 flex-shrink-0" style={{ background: 'linear-gradient(to bottom, hsl(var(--card) / 0.8), hsl(var(--card) / 0.6))' }}>
+      {/* Left: room name + breadcrumb */}
+      <div className="flex items-center gap-1.5 min-w-0">
+        <span className="text-[11px] font-semibold text-foreground/90 truncate">{roomName}</span>
+        <button
+          onClick={copyRoomId}
+          className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-muted/40 hover:bg-muted/70 transition-colors flex-shrink-0"
+          title="Copy room ID"
+        >
+          <Hash className="h-2 w-2 text-muted-foreground/40" />
+          <span className="text-[9px] text-muted-foreground/50 font-mono tabular-nums">{shortId}</span>
         </button>
         {activeFileName && (
           <>
-            <span className="text-muted-foreground/40 hidden md:inline text-xs">/</span>
-            <span className="text-[11px] text-primary/80 font-medium hidden md:inline truncate">{activeFileName}</span>
+            <span className="text-muted-foreground/25 hidden md:inline text-[11px]">/</span>
+            <span className="text-[11px] text-primary/70 font-medium hidden md:inline truncate max-w-[160px]">{activeFileName}</span>
           </>
         )}
       </div>
 
-      <div className="flex items-center gap-1.5 flex-shrink-0">
+      {/* Right: controls */}
+      <div className="flex items-center gap-1 flex-shrink-0">
         {onFilesImported && <ZipManager files={files} onFilesImported={onFilesImported} roomName={roomName} />}
-        <div className="flex items-center gap-1 text-[10px] text-muted-foreground px-1.5 hidden sm:flex">
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-          <span>Synced</span>
+
+        <div className="hidden sm:flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+          <span className="text-[9px] text-emerald-400/80 font-medium">Synced</span>
         </div>
-        <div className="flex items-center gap-1 px-2 py-1 rounded bg-secondary text-xs">
-          <Users className="h-3 w-3 text-muted-foreground" />
-          <span className="font-medium text-foreground text-[11px]">{onlineUsers}</span>
+
+        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted/40 border border-border/30">
+          <Users className="h-2.5 w-2.5 text-muted-foreground/60" />
+          <span className="font-semibold text-foreground/80 text-[10px] tabular-nums">{onlineUsers}</span>
         </div>
-        <Button size="sm" variant="default" className="h-7 text-[11px] px-2.5" onClick={copyRoomLink}>
-          {copied ? <Check className="h-3 w-3" /> : <Share2 className="h-3 w-3" />}
-          <span className="hidden sm:inline ml-1">{copied ? "Copied!" : "Share"}</span>
+
+        <Button
+          size="sm"
+          variant="default"
+          className="h-6 text-[10px] px-2 gap-1 rounded font-medium"
+          onClick={copyRoomLink}
+        >
+          {copied ? <Check className="h-2.5 w-2.5" /> : <Share2 className="h-2.5 w-2.5" />}
+          <span className="hidden sm:inline">{copied ? "Copied!" : "Share"}</span>
         </Button>
       </div>
     </div>

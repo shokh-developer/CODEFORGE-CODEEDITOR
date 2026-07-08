@@ -52,8 +52,31 @@ const CodeEditorWithAI = ({
   const monacoRef = useRef<any>(null);
   const decorationsRef = useRef<any[]>([]);
   const { toast } = useToast();
-  const editorLanguage = language === "tsx" ? "typescript" : language === "jsx" ? "javascript" : language;
-  const editorPath = `/workspace/current.${language === "tsx" ? "tsx" : language === "jsx" ? "jsx" : language === "typescript" ? "ts" : language === "javascript" ? "js" : language === "python" ? "py" : "txt"}`;
+  // Map our language identifiers to Monaco language IDs
+  const MONACO_LANG: Record<string, string> = {
+    tsx: "typescript", jsx: "javascript",
+    typescript: "typescript", javascript: "javascript",
+    python: "python", ruby: "ruby", go: "go", rust: "rust",
+    java: "java", cpp: "cpp", cc: "cpp", c: "c", csharp: "csharp",
+    php: "php", swift: "swift", kotlin: "kotlin", dart: "dart",
+    sql: "sql", bash: "shell", shell: "shell",
+    yaml: "yaml", xml: "xml", markdown: "markdown",
+    json: "json", css: "css", scss: "scss", html: "html",
+    lua: "lua", scala: "scala", r: "r", perl: "perl",
+  };
+  // Map language to file extension so Monaco path carries the right extension
+  const LANG_EXT: Record<string, string> = {
+    tsx: "tsx", jsx: "jsx", typescript: "ts", javascript: "js",
+    python: "py", ruby: "rb", go: "go", rust: "rs",
+    java: "java", cpp: "cpp", c: "c", csharp: "cs",
+    php: "php", swift: "swift", kotlin: "kt", dart: "dart",
+    sql: "sql", bash: "sh", shell: "sh",
+    yaml: "yaml", xml: "xml", markdown: "md",
+    json: "json", css: "css", scss: "scss", html: "html",
+    lua: "lua", scala: "scala", r: "r", perl: "pl",
+  };
+  const editorLanguage = MONACO_LANG[language] ?? language ?? "plaintext";
+  const editorPath = `/workspace/current.${LANG_EXT[language] ?? language ?? "txt"}`;
 
   const {
     isLoading,
@@ -203,36 +226,129 @@ const CodeEditorWithAI = ({
         module: monaco.languages.typescript.ModuleKind.ESNext,
         moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
         target: monaco.languages.typescript.ScriptTarget.ES2020,
+        // Reduce false positives for user-generated code
+        strict: false,
+        noImplicitAny: false,
+        skipLibCheck: true,
       };
 
       monaco.languages.typescript.typescriptDefaults.setCompilerOptions(compilerOptions);
       monaco.languages.typescript.javascriptDefaults.setCompilerOptions(compilerOptions);
 
+      // Completely disable all Monaco diagnostics — no red squiggles, ever.
+      // Syntax highlighting (coloring) is handled separately and is unaffected.
+      const diagnosticsOptions = {
+        noSemanticValidation: true,
+        noSyntaxValidation: true,
+        noSuggestionDiagnostics: true,
+      };
+      monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions(diagnosticsOptions);
+      monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions(diagnosticsOptions);
+
       const sharedTypes = `
+// Suppress errors for any unresolved npm package imports
 declare module "*";
-declare namespace JSX {
-  interface IntrinsicElements {
-    [elemName: string]: any;
+
+// JSX support — allow any element name and any props
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      [elemName: string]: any;
+    }
+    interface Element {}
+    interface ElementClass {}
+    interface IntrinsicAttributes {
+      key?: any;
+    }
   }
 }
+
 declare module "react" {
+  export type FC<P = {}> = (props: P & { children?: any }) => any;
+  export type ReactNode = any;
+  export type ReactElement = any;
+  export type CSSProperties = Record<string, any>;
+  export type MouseEvent<T = Element, E = Event> = any;
+  export type ChangeEvent<T = Element> = any;
+  export type FormEvent<T = Element> = any;
+  export type KeyboardEvent<T = Element> = any;
+  export type FocusEvent<T = Element> = any;
+  export type RefObject<T> = { current: T | null };
+  export type MutableRefObject<T> = { current: T };
+  export type Dispatch<A> = (value: A) => void;
+  export type SetStateAction<S> = S | ((prevState: S) => S);
+  export type Context<T> = any;
+
+  export function useState<T>(initial: T | (() => T)): [T, Dispatch<SetStateAction<T>>];
+  export function useState<T = undefined>(): [T | undefined, Dispatch<SetStateAction<T | undefined>>];
+  export function useEffect(fn: () => void | (() => void), deps?: ReadonlyArray<any>): void;
+  export function useMemo<T>(fn: () => T, deps: ReadonlyArray<any>): T;
+  export function useCallback<T extends (...args: any[]) => any>(fn: T, deps: ReadonlyArray<any>): T;
+  export function useRef<T>(initial: T): MutableRefObject<T>;
+  export function useRef<T>(initial: T | null): RefObject<T>;
+  export function useRef<T = undefined>(): MutableRefObject<T | undefined>;
+  export function useContext<T>(context: Context<T>): T;
+  export function useReducer<S, A>(reducer: (state: S, action: A) => S, initialState: S): [S, Dispatch<A>];
+  export function useReducer<S, A, I>(reducer: (state: S, action: A) => S, initialArg: I, init: (i: I) => S): [S, Dispatch<A>];
+  export function createContext<T>(defaultValue: T): Context<T>;
+  export function memo<P extends object>(component: FC<P>): FC<P>;
+  export function forwardRef<T, P = {}>(render: (props: P, ref: any) => any): any;
+  export function createElement(type: any, props?: any, ...children: any[]): ReactElement;
+  export function cloneElement(element: ReactElement, props?: any, ...children: any[]): ReactElement;
+  export function isValidElement(object: any): boolean;
+  export function Children(...args: any[]): any;
+
+  export const Fragment: any;
+  export const StrictMode: any;
+  export const Suspense: any;
+  export const lazy: any;
+  export const Component: any;
+  export const PureComponent: any;
+
   const React: any;
   export default React;
-  export const Fragment: any;
-  export const useState: any;
-  export const useEffect: any;
-  export const useMemo: any;
-  export const useCallback: any;
-  export const useRef: any;
-  export const useContext: any;
 }
+
 declare module "react/jsx-runtime" {
   export const Fragment: any;
-  export const jsx: any;
-  export const jsxs: any;
+  export function jsx(type: any, props: any, key?: any): any;
+  export function jsxs(type: any, props: any, key?: any): any;
 }
+
+declare module "react-dom" {
+  export function render(element: any, container: Element | null): void;
+  export function unmountComponentAtNode(container: Element): boolean;
+  export const createPortal: any;
+}
+
 declare module "react-dom/client" {
-  export function createRoot(container: Element | DocumentFragment): { render(node: any): void };
+  export function createRoot(container: Element | DocumentFragment | null): {
+    render(element: any): void;
+    unmount(): void;
+  };
+  export function hydrateRoot(container: Element | DocumentFragment, initialChildren: any): any;
+}
+
+declare module "react-router-dom" {
+  export const BrowserRouter: any;
+  export const HashRouter: any;
+  export const MemoryRouter: any;
+  export const Router: any;
+  export const Route: any;
+  export const Routes: any;
+  export const Switch: any;
+  export const Link: any;
+  export const NavLink: any;
+  export const Navigate: any;
+  export const Outlet: any;
+  export const useNavigate: () => (to: string, options?: any) => void;
+  export const useLocation: () => { pathname: string; search: string; hash: string; state: any };
+  export const useParams: <T extends Record<string, string | undefined> = {}>() => T;
+  export const useSearchParams: () => [any, (params: any) => void];
+  export const useMatch: (pattern: any) => any;
+  export const createBrowserRouter: any;
+  export const createHashRouter: any;
+  export const RouterProvider: any;
 }
 `;
 
@@ -367,7 +483,7 @@ declare module "react-dom/client" {
   return (
     <div className="h-full w-full relative">
       {/* Monaco Editor */}
-      <div className="h-full w-full overflow-hidden border border-border">
+      <div className="h-full w-full rounded-lg overflow-hidden border border-border">
         <Editor
           height="100%"
           language={editorLanguage}
@@ -378,20 +494,19 @@ declare module "react-dom/client" {
           theme="vs-dark"
           options={{
             fontSize: 13,
-            lineHeight: 20,
-            fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
-            fontLigatures: true,
-            minimap: { enabled: false },
+            fontFamily: "'Fira Code', 'Consolas', monospace",
+            minimap: { enabled: true },
             scrollBeyondLastLine: false,
             wordWrap: "on",
             automaticLayout: true,
             tabSize: 2,
             readOnly: readOnly,
             cursorBlinking: "smooth",
+            cursorSmoothCaretAnimation: "on",
             smoothScrolling: true,
-            padding: { top: 8, bottom: 8 },
+            padding: { top: 10, bottom: 10 },
             lineNumbers: "on",
-            renderLineHighlight: "line",
+            renderLineHighlight: "all",
             bracketPairColorization: { enabled: true },
             suggest: {
               showKeywords: true,

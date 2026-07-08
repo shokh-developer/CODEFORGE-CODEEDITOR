@@ -35,7 +35,7 @@ const CodeEditor = ({ code, language, onChange, readOnly = false }: CodeEditorPr
   }
 
   return (
-    <div className="h-full w-full overflow-hidden border border-border">
+    <div className="h-full w-full rounded-lg overflow-hidden border border-border">
       <Editor
         height="100%"
         language={language}
@@ -44,21 +44,20 @@ const CodeEditor = ({ code, language, onChange, readOnly = false }: CodeEditorPr
         onMount={handleEditorDidMount}
         theme="vs-dark"
         options={{
-          fontSize: 13,
-          lineHeight: 20,
-          fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
-          fontLigatures: true,
-          minimap: { enabled: false },
+          fontSize: 14,
+          fontFamily: "'Fira Code', 'Consolas', monospace",
+          minimap: { enabled: true },
           scrollBeyondLastLine: false,
           wordWrap: "on",
           automaticLayout: true,
           tabSize: 2,
           readOnly: readOnly,
           cursorBlinking: "smooth",
+          cursorSmoothCaretAnimation: "on",
           smoothScrolling: true,
-          padding: { top: 8, bottom: 8 },
+          padding: { top: 16, bottom: 16 },
           lineNumbers: "on",
-          renderLineHighlight: "line",
+          renderLineHighlight: "all",
           bracketPairColorization: { enabled: true },
         }}
       />

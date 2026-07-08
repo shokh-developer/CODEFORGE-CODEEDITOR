@@ -87,56 +87,60 @@ const Terminal = ({ isOpen, onToggle, code, language: rawLanguage, files, active
     return false;
   };
 
-  const runCodeInBrowser = () => {
-    // Sandboxed iframe (no allow-same-origin) — user code cannot reach window/document/localStorage
+  const runCodeInBrowser = (): Promise<void> => new Promise((resolve) => {
     const iframe = document.createElement("iframe");
-    iframe.setAttribute("sandbox", "allow-scripts");
     iframe.style.display = "none";
+    iframe.setAttribute("sandbox", "allow-scripts");
 
-    const runnerHtml = `<!doctype html><html><body><script>
-      (function(){
-        const send = (type, content) => parent.postMessage({ __cf_log: true, type, content }, "*");
-        const fmt = (v) => { try { return typeof v === 'object' ? JSON.stringify(v, null, 2) : String(v); } catch(e){ return String(v); } };
-        const c = {
-          log:  (...a) => send("log",   a.map(fmt).join(" ")),
-          error:(...a) => send("error", a.map(fmt).join(" ")),
-          warn: (...a) => send("warn",  a.map(fmt).join(" ")),
-          info: (...a) => send("info",  a.map(fmt).join(" ")),
-        };
-        window.addEventListener("error", e => send("error", "Error: " + e.message));
-        try {
-          const fn = new Function("console", ${JSON.stringify(code)});
-          const r = fn(c);
-          if (r !== undefined) send("result", "↳ " + fmt(r));
-          send("info", "Code executed successfully.");
-        } catch (err) {
-          send("error", "Error: " + (err && err.message ? err.message : String(err)));
-        } finally {
-          setTimeout(() => send("__done", ""), 50);
-        }
-      })();
-    <\/script></body></html>`;
+    const srcdoc = [
+      "<!DOCTYPE html><html><body><script>",
+      "window.addEventListener('message',function(e){",
+      "  if(!e.data||e.data.type!=='run')return;",
+      "  var _s=function(t,c){parent.postMessage({source:'sandbox',type:t,content:c},'*');};",
+      "  var console={",
+      "    log:function(){_s('log',[].slice.call(arguments).map(String).join(' '));},",
+      "    error:function(){_s('error',[].slice.call(arguments).map(String).join(' '));},",
+      "    warn:function(){_s('warn',[].slice.call(arguments).map(String).join(' '));},",
+      "    info:function(){_s('info',[].slice.call(arguments).map(String).join(' '));},",
+      "  };",
+      "  try{",
+      "    var r=new Function('console','\"use strict\";'+e.data.code)(console);",
+      "    if(r!==undefined)_s('result',String(r));",
+      "    _s('done','Code executed successfully.');",
+      "  }catch(err){_s('error',err.message);_s('done',null);}",
+      "});",
+      "parent.postMessage({source:'sandbox',type:'ready'},'*');",
+      "</script></body></html>",
+    ].join("");
 
-    const onMessage = (e: MessageEvent) => {
-      const m = e.data;
-      if (!m || !m.__cf_log) return;
-      if (m.type === "__done") {
-        window.removeEventListener("message", onMessage);
-        iframe.remove();
-        return;
+    iframe.srcdoc = srcdoc;
+
+    const onMessage = (event: MessageEvent) => {
+      if (!event.data || event.data.source !== "sandbox") return;
+      const { type, content } = event.data as { type: string; content: string | null };
+      if (type === "ready") {
+        iframe.contentWindow?.postMessage({ type: "run", code }, "*");
+      } else if (type === "log") addLog("log", content ?? "");
+      else if (type === "error") addLog("error", `Error: ${content}`);
+      else if (type === "warn") addLog("warn", content ?? "");
+      else if (type === "info") addLog("info", content ?? "");
+      else if (type === "result") addLog("result", `↳ ${content}`);
+      else if (type === "done") {
+        if (content) addLog("info", content);
+        cleanup();
+        resolve();
       }
-      addLog(m.type as LogEntry["type"], m.content);
     };
-    window.addEventListener("message", onMessage);
 
-    iframe.srcdoc = runnerHtml;
-    document.body.appendChild(iframe);
-    // Safety: auto-cleanup after 10s
-    setTimeout(() => {
+    const cleanup = () => {
       window.removeEventListener("message", onMessage);
-      if (iframe.parentNode) iframe.remove();
-    }, 10000);
-  };
+      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+    };
+
+    window.addEventListener("message", onMessage);
+    document.body.appendChild(iframe);
+    setTimeout(() => { cleanup(); resolve(); }, 10000);
+  });
 
   const runCodeOnServer = async (stdin: string = "") => {
     try {
@@ -204,7 +208,7 @@ const Terminal = ({ isOpen, onToggle, code, language: rawLanguage, files, active
 
     try {
       if (["javascript", "jsx"].includes(language)) {
-        runCodeInBrowser();
+        await runCodeInBrowser();
       } else if (backendLanguages.includes(language)) {
         await runCodeOnServer(stdin);
       } else {
@@ -215,12 +219,6 @@ const Terminal = ({ isOpen, onToggle, code, language: rawLanguage, files, active
     }
   };
 
-  const formatValue = (value: any): string => {
-    if (value === null) return "null";
-    if (value === undefined) return "undefined";
-    if (typeof value === "object") { try { return JSON.stringify(value, null, 2); } catch { return String(value); } }
-    return String(value);
-  };
 
   const getLogColor = (type: LogEntry["type"]) => {
     switch (type) {
@@ -248,44 +246,47 @@ const Terminal = ({ isOpen, onToggle, code, language: rawLanguage, files, active
 
   return (
     <>
-      <div className="border-t border-border/50">
+      <div className="border-t border-border/35">
         {/* Header */}
         <div
-          className="flex items-center justify-between px-4 h-9 bg-card/80 backdrop-blur-sm cursor-pointer hover:bg-muted/20 transition-all select-none"
+          className="flex items-center justify-between px-2.5 h-7 cursor-pointer select-none transition-colors hover:bg-white/[0.02]"
+          style={{ background: 'hsl(var(--card) / 0.7)' }}
           onClick={onToggle}
         >
-          <div className="flex items-center gap-2.5">
-            <TerminalIcon className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-[11px] font-medium text-foreground/80 uppercase tracking-wider">Console</span>
+          <div className="flex items-center gap-2">
+            <TerminalIcon className="h-3 w-3 text-muted-foreground/60" />
+            <span className="text-[10px] font-semibold text-foreground/70 uppercase tracking-[0.12em]">Console</span>
             {logs.length > 0 && (
-              <span className="px-1.5 py-0.5 text-[10px] rounded-md bg-muted text-muted-foreground font-mono">
+              <span className="px-1 py-px text-[9px] rounded bg-muted/60 text-muted-foreground/60 font-mono tabular-nums">
                 {logs.length}
               </span>
             )}
-            <span className="text-[10px] text-muted-foreground font-mono px-1.5 py-0.5 rounded bg-muted/50 uppercase">
+            <span className="text-[9px] text-muted-foreground/40 font-mono px-1 py-px rounded bg-muted/30 uppercase">
               {language}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
             {inputLanguages.includes(language) && codeNeedsInput() && (
-              <span className="text-[10px] text-amber-400/70 flex items-center gap-1">
-                <Keyboard className="h-3 w-3" /> Input
+              <span className="text-[9px] text-amber-400/65 flex items-center gap-1">
+                <Keyboard className="h-2.5 w-2.5" /> stdin
               </span>
             )}
             <button
               onClick={(e) => { e.stopPropagation(); handleRunClick(); }}
               disabled={isRunning || !code.trim()}
               className={cn(
-                "h-6 px-2.5 rounded-md text-[11px] font-medium flex items-center gap-1 transition-all",
+                "h-5 px-2 rounded text-[10px] font-medium flex items-center gap-1 transition-all",
                 isRunning
-                  ? "bg-muted text-muted-foreground"
-                  : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+                  ? "bg-muted/60 text-muted-foreground/60"
+                  : "bg-primary/90 text-primary-foreground hover:bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.25)]"
               )}
             >
-              {isRunning ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+              {isRunning ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Play className="h-2.5 w-2.5" />}
               {isRunning ? "Running" : "Run"}
             </button>
-            {isOpen ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />}
+            {isOpen
+              ? <ChevronDown className="h-3 w-3 text-muted-foreground/45" />
+              : <ChevronUp className="h-3 w-3 text-muted-foreground/45" />}
           </div>
         </div>
 
@@ -296,47 +297,47 @@ const Terminal = ({ isOpen, onToggle, code, language: rawLanguage, files, active
               initial={{ height: 0 }}
               animate={{ height: terminalHeight }}
               exit={{ height: 0 }}
-              transition={{ duration: 0.2, ease: "easeInOut" }}
+              transition={{ duration: 0.18, ease: "easeInOut" }}
               className="overflow-hidden"
             >
-              <div style={{ height: terminalHeight }} className="flex flex-col bg-background">
+              <div style={{ height: terminalHeight, background: 'hsl(var(--background))' }} className="flex flex-col">
                 {/* Toolbar */}
-                <div className="flex items-center justify-between px-3 h-8 border-b border-border/40 bg-card/40">
-                  <span className="text-[11px] font-medium text-muted-foreground">Console Output</span>
-                  <div className="flex items-center gap-1">
+                <div className="flex items-center justify-between px-2.5 h-6 border-b border-border/30 flex-shrink-0" style={{ background: 'hsl(var(--card) / 0.35)' }}>
+                  <span className="text-[9px] font-medium text-muted-foreground/45 uppercase tracking-wider">Output</span>
+                  <div className="flex items-center gap-0.5">
                     <button
                       onClick={() => setExpanded(!expanded)}
-                      className="p-1 rounded hover:bg-muted/50 transition-colors"
+                      className="p-1 rounded hover:bg-muted/40 transition-colors"
                       title={expanded ? "Minimize" : "Maximize"}
                     >
-                      {expanded ? <Minimize2 className="h-3 w-3 text-muted-foreground" /> : <Maximize2 className="h-3 w-3 text-muted-foreground" />}
+                      {expanded ? <Minimize2 className="h-2.5 w-2.5 text-muted-foreground/50" /> : <Maximize2 className="h-2.5 w-2.5 text-muted-foreground/50" />}
                     </button>
                     <button
                       onClick={clearLogs}
-                      className="p-1 rounded hover:bg-muted/50 transition-colors"
+                      className="p-1 rounded hover:bg-muted/40 transition-colors"
                       title="Clear"
                     >
-                      <Trash2 className="h-3 w-3 text-muted-foreground" />
+                      <Trash2 className="h-2.5 w-2.5 text-muted-foreground/50" />
                     </button>
                   </div>
                 </div>
 
                 {/* Logs */}
-                <div className="flex-1 overflow-y-auto p-3 font-mono text-xs space-y-0.5">
+                <div className="flex-1 overflow-y-auto px-3 py-2 font-mono text-[11px] space-y-px">
                   {logs.length === 0 ? (
-                    <div className="text-muted-foreground/60 flex flex-col items-center justify-center h-full gap-2">
-                      <TerminalIcon className="h-6 w-6 opacity-20" />
-                      <p className="text-[11px] font-sans font-medium">Console ready</p>
-                      <p className="text-[10px] text-muted-foreground/50 font-sans">Click Run or type a command below</p>
+                    <div className="flex flex-col items-center justify-center h-full gap-2 text-center">
+                      <TerminalIcon className="h-5 w-5 text-muted-foreground/15" />
+                      <p className="text-[10px] font-sans font-medium text-muted-foreground/40">Console ready</p>
+                      <p className="text-[9px] text-muted-foreground/30 font-sans">Press Run or type a command</p>
                     </div>
                   ) : (
                     logs.map((log, index) => (
                       <div
                         key={index}
-                        className={cn("flex gap-2 py-0.5 leading-relaxed", getLogColor(log.type))}
+                        className={cn("flex gap-2 py-px leading-[1.55]", getLogColor(log.type))}
                       >
-                        <span className="w-4 text-center flex-shrink-0 opacity-60">{getLogIcon(log.type)}</span>
-                        <span className="text-muted-foreground/30 text-[10px] w-14 flex-shrink-0 tabular-nums pt-px">
+                        <span className="w-3 text-center flex-shrink-0 opacity-50 text-[10px]">{getLogIcon(log.type)}</span>
+                        <span className="text-muted-foreground/25 text-[9px] w-12 flex-shrink-0 tabular-nums pt-px">
                           {log.timestamp.toLocaleTimeString('en', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                         </span>
                         <pre className="whitespace-pre-wrap break-all flex-1">{log.content}</pre>
@@ -347,13 +348,13 @@ const Terminal = ({ isOpen, onToggle, code, language: rawLanguage, files, active
                 </div>
 
                 {/* Command input */}
-                <div className="border-t border-border/30 px-3 py-1.5 bg-card/20">
+                <div className="border-t border-border/25 px-3 py-1 flex-shrink-0" style={{ background: 'hsl(var(--card) / 0.25)' }}>
                   <div className="flex items-center gap-2">
-                    <span className="text-primary/60 font-mono text-xs">$</span>
+                    <span className="text-primary/50 font-mono text-[11px] select-none">$</span>
                     <input
                       type="text"
                       placeholder="run, help, node, python..."
-                      className="flex-1 bg-transparent text-foreground font-mono text-xs outline-none placeholder:text-muted-foreground/30"
+                      className="flex-1 bg-transparent text-foreground/80 font-mono text-[11px] outline-none placeholder:text-muted-foreground/25"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           const value = e.currentTarget.value.trim();
