@@ -1119,22 +1119,8 @@ const CodeForgePanel = ({ code, language, files, activeFile, onCreateFile, onUpd
       const activeFileLabel = activeFile ? `\n\nCurrent file: ${activeFile.path}${activeFile.name}` : '';
       const apiPrompt = effectivePrompt + activeFileLabel + fileListCtx;
 
-      // Vision path: image attached → call Gemini directly from browser
-      if (imageData && import.meta.env.VITE_GEMINI_API_KEY) {
-        const assistantId = generateId();
-        setMessages(prev => [...prev, { id: assistantId, role: "assistant", content: "", timestamp: new Date() }]);
-        const codeCtx = code ? `\n\nCurrent ${language} code:\n\`\`\`${language}\n${code}\n\`\`\`` : "";
-        const raw = await callGeminiVision(
-          apiPrompt + codeCtx, imageData, CODEFORGE_VISION_SYSTEM, chatHistory
-        );
-        const { text, actions, proposedChanges } = parseAIResponse(raw, language);
-        setMessages(prev => prev.map(m => m.id === assistantId ? {
-          ...m, content: text,
-          actions: actions.length > 0 ? actions : undefined,
-          proposedChanges: proposedChanges.length > 0 ? proposedChanges : undefined,
-        } : m));
-        return;
-      }
+      // Images are sent to the edge function (Lovable AI Gateway multimodal).
+
 
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
