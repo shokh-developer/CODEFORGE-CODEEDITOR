@@ -556,30 +556,9 @@ serve(async (req) => {
       );
     }
 
-    // --- Credit deduction (50 per request) ---
-    const adminClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
-    const { data: creditResult, error: creditErr } = await adminClient.rpc("consume_credits", {
-      _user_id: userId,
-      _amount: 25,
-    });
-    if (creditErr) {
-      console.error("consume_credits error:", creditErr);
-      return new Response(
-        JSON.stringify({ error: "Credit service unavailable. Please try again." }),
-        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    } else if (creditResult && (creditResult as any).ok === false) {
-      return new Response(
-        JSON.stringify({
-          error: `Kunlik credit limitingiz tugadi. Balans: ${(creditResult as any).balance}/${(creditResult as any).daily_limit}. Ertaga yangilanadi yoki planni yangilang.`,
-          credits: creditResult,
-        }),
-        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // --- Credits: AI chat is free (Lovable AI Gateway is used) ---
+
+
 
     const { prompt, code, language, messages: chatHistory, mode, imageData } = await req.json();
     const isProjectMode = mode === "generate-project";
@@ -650,12 +629,23 @@ serve(async (req) => {
       );
     }
 
-    const userContent: any = prompt || null;
+    // Multimodal: if an image is attached (and no Gemini key path was taken),
+    // send it to the Lovable AI Gateway as an image_url content block.
+    const userContent: any = hasImage
+      ? [
+          ...(prompt ? [{ type: "text", text: prompt }] : []),
+          {
+            type: "image_url",
+            image_url: { url: `data:${imageData.mimeType};base64,${imageData.base64}` },
+          },
+        ]
+      : (prompt || null);
     const allMessages: any[] = [
       { role: "system", content: systemPrompt },
       ...(chatHistory || []),
       ...(userContent != null ? [{ role: "user", content: userContent }] : []),
     ];
+
 
     // Non-streaming for project generation
     if (isProjectMode) {
