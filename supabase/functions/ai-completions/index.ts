@@ -9,9 +9,10 @@ const corsHeaders = {
 // Try Google Gemini with rotating keys, fallback to Lovable AI
 async function callAI(systemPrompt: string, userPrompt: string, temperature: number, maxTokens: number): Promise<string> {
   const googleKeys = [
-    Deno.env.get("AIzaSyAuthagoNQTexH9eTpR02MMD-nLBS58nak"),
-    Deno.env.get("AIzaSyDRdnGMHHc2pgIpTyDUlIIH24bDziImLuE"),
-    Deno.env.get("AIzaSyCeF0Nfkp-4cYucuuDAJJ4tvvEHv6SQiGM"),
+    Deno.env.get("GOOGLE_AI_KEY_1"),
+    Deno.env.get("GOOGLE_AI_KEY_2"),
+    Deno.env.get("GOOGLE_AI_KEY_3"),
+    Deno.env.get("GEMINI_API_KEY"),
   ].filter(Boolean) as string[];
 
   // Shuffle for rotation
