@@ -156,6 +156,7 @@ const createBundledPreviewHtml = (files: PreviewFileItem[]) => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   ${headMarkup}
+  ${needsTailwind ? '<script src="https://cdn.tailwindcss.com"></script>' : ""}
   <style>
     body { margin: 0; }
     #__preview_error__ { display: none; padding: 16px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; color: #fecaca; background: #450a0a; border-radius: 6px; margin: 8px; }
