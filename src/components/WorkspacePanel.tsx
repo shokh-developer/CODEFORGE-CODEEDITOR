@@ -843,17 +843,8 @@ const BuildForgePanel = ({ roomId, code, language, files, activeFile, onCreateFi
         : '';
       const apiPrompt = prompt + fileContextBlock;
 
-      // Vision path: image attached → call Gemini directly (no gateway deploy needed)
-      if (imageData && import.meta.env.VITE_GEMINI_API_KEY) {
-        const raw = await callGeminiVision(apiPrompt, imageData, BUILDFORGE_VISION_SYSTEM, chatHistory);
-        const { text, proposedChanges } = parseAIResponse(raw, "tsx");
-        setMessages(prev => prev.map(m => m.id === assistantId ? {
-          ...m, content: text,
-          proposedChanges: proposedChanges.length > 0 ? proposedChanges : undefined,
-        } : m));
-        if (conversationId) await persistMessage(conversationId, "assistant", text);
-        return;
-      }
+      // Images are sent to the edge function (Lovable AI Gateway multimodal).
+
 
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
