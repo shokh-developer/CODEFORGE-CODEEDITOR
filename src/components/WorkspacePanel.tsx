@@ -380,79 +380,6 @@ The user may have attached a design mockup, screenshot, diagram, or reference im
 Analyze the image carefully alongside their current code and provide specific, actionable code suggestions.
 Use [CHANGE_FILE:] with [FIND]/[REPLACE] blocks when suggesting edits to existing files.`;
 
-const callGeminiVision = async (
-  userPrompt: string,
-  image: AttachedImage,
-  systemText: string,
-  history: Array<{ role: string; content: string }>
-): Promise<string> => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
-  if (!apiKey) {
-    throw new Error(
-      "GEMINI_API_KEY sozlanmagan.\n\n" +
-      "1. aistudio.google.com dan bepul API key oling\n" +
-      "2. .env fayliga qo'shing: VITE_GEMINI_API_KEY=AIza...\n" +
-      "3. Dev serverni qayta ishga tushiring"
-    );
-  }
-
-  // Try models in order until one responds successfully
-  const MODELS_TO_TRY = [
-    "gemini-2.0-flash-lite",
-    "gemini-2.0-flash",
-    "gemini-1.5-flash-002",
-    "gemini-1.5-flash-latest",
-    "gemini-1.5-pro-latest",
-  ];
-
-  const geminiHistory = history
-    .filter(m => typeof m.content === "string" && m.content)
-    .map(m => ({
-      role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: m.content as string }],
-    }));
-
-  const requestBody = JSON.stringify({
-    system_instruction: { parts: [{ text: systemText }] },
-    contents: [
-      ...geminiHistory,
-      {
-        role: "user",
-        parts: [
-          { text: userPrompt },
-          { inline_data: { mime_type: image.mimeType, data: image.base64 } },
-        ],
-      },
-    ],
-    generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
-  });
-
-  let lastError = "Hech bir Gemini modeli ishlamadi";
-  for (const model of MODELS_TO_TRY) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-    const resp = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: requestBody,
-    });
-
-    const data = await resp.json();
-
-    if (resp.ok) {
-      return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "Javob bo'sh keldi";
-    }
-
-    const errMsg: string = data?.error?.message ?? `HTTP ${resp.status}`;
-    // "not found" xatosida keyingi modelni sinab ko'r
-    if (errMsg.toLowerCase().includes("not found") || errMsg.toLowerCase().includes("not supported")) {
-      lastError = errMsg;
-      continue;
-    }
-    // Boshqa xatolar (quota, auth) — to'xtash
-    throw new Error(`Gemini xatolik: ${errMsg}`);
-  }
-  throw new Error(`Gemini xatolik: ${lastError}`);
-};
 
 // ==================== INTENT DETECTION ====================
 
@@ -843,17 +770,8 @@ const BuildForgePanel = ({ roomId, code, language, files, activeFile, onCreateFi
         : '';
       const apiPrompt = prompt + fileContextBlock;
 
-      // Vision path: image attached → call Gemini directly (no gateway deploy needed)
-      if (imageData && import.meta.env.VITE_GEMINI_API_KEY) {
-        const raw = await callGeminiVision(apiPrompt, imageData, BUILDFORGE_VISION_SYSTEM, chatHistory);
-        const { text, proposedChanges } = parseAIResponse(raw, "tsx");
-        setMessages(prev => prev.map(m => m.id === assistantId ? {
-          ...m, content: text,
-          proposedChanges: proposedChanges.length > 0 ? proposedChanges : undefined,
-        } : m));
-        if (conversationId) await persistMessage(conversationId, "assistant", text);
-        return;
-      }
+      // Images are sent to the edge function (Lovable AI Gateway multimodal).
+
 
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
@@ -1128,22 +1046,8 @@ const CodeForgePanel = ({ code, language, files, activeFile, onCreateFile, onUpd
       const activeFileLabel = activeFile ? `\n\nCurrent file: ${activeFile.path}${activeFile.name}` : '';
       const apiPrompt = effectivePrompt + activeFileLabel + fileListCtx;
 
-      // Vision path: image attached → call Gemini directly from browser
-      if (imageData && import.meta.env.VITE_GEMINI_API_KEY) {
-        const assistantId = generateId();
-        setMessages(prev => [...prev, { id: assistantId, role: "assistant", content: "", timestamp: new Date() }]);
-        const codeCtx = code ? `\n\nCurrent ${language} code:\n\`\`\`${language}\n${code}\n\`\`\`` : "";
-        const raw = await callGeminiVision(
-          apiPrompt + codeCtx, imageData, CODEFORGE_VISION_SYSTEM, chatHistory
-        );
-        const { text, actions, proposedChanges } = parseAIResponse(raw, language);
-        setMessages(prev => prev.map(m => m.id === assistantId ? {
-          ...m, content: text,
-          actions: actions.length > 0 ? actions : undefined,
-          proposedChanges: proposedChanges.length > 0 ? proposedChanges : undefined,
-        } : m));
-        return;
-      }
+      // Images are sent to the edge function (Lovable AI Gateway multimodal).
+
 
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;

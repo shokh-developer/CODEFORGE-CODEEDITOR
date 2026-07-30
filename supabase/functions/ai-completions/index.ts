@@ -9,9 +9,10 @@ const corsHeaders = {
 // Try Google Gemini with rotating keys, fallback to Lovable AI
 async function callAI(systemPrompt: string, userPrompt: string, temperature: number, maxTokens: number): Promise<string> {
   const googleKeys = [
-    Deno.env.get("AIzaSyAuthagoNQTexH9eTpR02MMD-nLBS58nak"),
-    Deno.env.get("AIzaSyDRdnGMHHc2pgIpTyDUlIIH24bDziImLuE"),
-    Deno.env.get("AIzaSyCeF0Nfkp-4cYucuuDAJJ4tvvEHv6SQiGM"),
+    Deno.env.get("GOOGLE_AI_KEY_1"),
+    Deno.env.get("GOOGLE_AI_KEY_2"),
+    Deno.env.get("GOOGLE_AI_KEY_3"),
+    Deno.env.get("GEMINI_API_KEY"),
   ].filter(Boolean) as string[];
 
   // Shuffle for rotation
@@ -137,28 +138,7 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
-    const creditAmount = type === "inline" ? 1 : 5;
-    const { data: creditResult, error: creditErr } = await adminClient.rpc("consume_credits", {
-      _user_id: userId,
-      _amount: creditAmount,
-    });
-    if (creditErr) {
-      console.error("consume_credits error:", creditErr);
-      return new Response(
-        JSON.stringify({ error: "Credit service unavailable. Please try again." }),
-        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    if (creditResult && (creditResult as { ok: boolean; balance: number; daily_limit: number }).ok === false) {
-      const r = creditResult as { ok: boolean; balance: number; daily_limit: number };
-      return new Response(
-        JSON.stringify({
-          error: `Kunlik credit limitingiz tugadi. Balans: ${r.balance}/${r.daily_limit}. Ertaga yangilanadi yoki planni yangilang.`,
-          credits: creditResult,
-        }),
-        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // Credits: AI completions are free (served via Lovable AI Gateway)
 
     let systemPrompt = "";
     let userPrompt = "";

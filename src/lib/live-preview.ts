@@ -131,9 +131,24 @@ const createBundledPreviewHtml = (files: PreviewFileItem[]) => {
     return createLegacyPreviewHtml(files);
   }
 
-  const importMap = {
-    imports: Object.fromEntries(Array.from(collectExternalPackages(files)).sort().map((pkg) => [pkg, `https://esm.sh/${pkg}?bundle`])),
+  const REACT_VERSION = "18.3.1";
+  const cdnUrl = (pkg: string) => {
+    if (pkg === "react") return `https://esm.sh/react@${REACT_VERSION}`;
+    if (pkg === "react/jsx-runtime") return `https://esm.sh/react@${REACT_VERSION}/jsx-runtime`;
+    if (pkg === "react/jsx-dev-runtime") return `https://esm.sh/react@${REACT_VERSION}/jsx-dev-runtime`;
+    if (pkg === "react-dom") return `https://esm.sh/react-dom@${REACT_VERSION}?external=react`;
+    if (pkg.startsWith("react-dom/")) return `https://esm.sh/react-dom@${REACT_VERSION}/${pkg.slice("react-dom/".length)}?external=react`;
+    return `https://esm.sh/${pkg}?external=react,react-dom`;
   };
+
+  const importMap = {
+    imports: Object.fromEntries(Array.from(collectExternalPackages(files)).sort().map((pkg) => [pkg, cdnUrl(pkg)])),
+  };
+
+  const needsTailwind = files.some((file) =>
+    (/\.css$/i.test(file.name) && /@tailwind|@apply/.test(file.content))
+    || /tailwind\.config\./i.test(file.name));
+
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -141,6 +156,7 @@ const createBundledPreviewHtml = (files: PreviewFileItem[]) => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   ${headMarkup}
+  ${needsTailwind ? '<script src="https://cdn.tailwindcss.com"></script>' : ""}
   <style>
     body { margin: 0; }
     #__preview_error__ { display: none; padding: 16px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; color: #fecaca; background: #450a0a; border-radius: 6px; margin: 8px; }
