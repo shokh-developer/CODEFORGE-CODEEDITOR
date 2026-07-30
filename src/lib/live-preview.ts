@@ -131,9 +131,24 @@ const createBundledPreviewHtml = (files: PreviewFileItem[]) => {
     return createLegacyPreviewHtml(files);
   }
 
-  const importMap = {
-    imports: Object.fromEntries(Array.from(collectExternalPackages(files)).sort().map((pkg) => [pkg, `https://esm.sh/${pkg}?bundle`])),
+  const REACT_VERSION = "18.3.1";
+  const cdnUrl = (pkg: string) => {
+    if (pkg === "react") return `https://esm.sh/react@${REACT_VERSION}`;
+    if (pkg === "react/jsx-runtime") return `https://esm.sh/react@${REACT_VERSION}/jsx-runtime`;
+    if (pkg === "react/jsx-dev-runtime") return `https://esm.sh/react@${REACT_VERSION}/jsx-dev-runtime`;
+    if (pkg === "react-dom") return `https://esm.sh/react-dom@${REACT_VERSION}?external=react`;
+    if (pkg.startsWith("react-dom/")) return `https://esm.sh/react-dom@${REACT_VERSION}/${pkg.slice("react-dom/".length)}?external=react`;
+    return `https://esm.sh/${pkg}?external=react,react-dom`;
   };
+
+  const importMap = {
+    imports: Object.fromEntries(Array.from(collectExternalPackages(files)).sort().map((pkg) => [pkg, cdnUrl(pkg)])),
+  };
+
+  const needsTailwind = files.some((file) =>
+    (/\.css$/i.test(file.name) && /@tailwind|@apply/.test(file.content))
+    || /tailwind\.config\./i.test(file.name));
+
 
   return `<!DOCTYPE html>
 <html lang="en">
