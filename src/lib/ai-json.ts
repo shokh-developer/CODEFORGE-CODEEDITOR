@@ -129,9 +129,17 @@ export const parseAiJsonResponse = <T>(response: string, expected: ExpectedJsonS
 
   if (expected === "array") {
     if (Array.isArray(parsed)) return parsed as T;
-    if (parsed && typeof parsed === "object" && Array.isArray((parsed as { files?: unknown[] }).files)) {
-      return (parsed as { files: unknown[] }).files as T;
+    if (parsed && typeof parsed === "object") {
+      // Look for any array-valued property (files, components, project, etc.)
+      const obj = parsed as Record<string, unknown>;
+      for (const key of ["files", "components", "project", "sources", "items"]) {
+        if (Array.isArray(obj[key])) return obj[key] as T;
+      }
+      // If the object is a single file-shaped object, wrap it
+      if (obj.name || obj.path || obj.content) return [obj] as unknown as T;
     }
+    // Last resort: not an array and no array property — return empty array
+    return [] as unknown as T;
   }
 
   if (expected === "object" && Array.isArray(parsed)) {
