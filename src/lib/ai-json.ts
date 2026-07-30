@@ -155,7 +155,8 @@ const normalizeFolderPath = (path?: string) => {
 };
 
 export const normalizeGeneratedProjectFiles = (response: string): GeneratedProjectFile[] => {
-  const parsedFiles = parseAiJsonResponse<GeneratedProjectFile[]>(response, "array");
+  const parsed = parseAiJsonResponse<GeneratedProjectFile[] | GeneratedProjectFile>(response, "array");
+  const parsedFiles = Array.isArray(parsed) ? parsed : parsed && typeof parsed === "object" ? [parsed] : [];
 
   return parsedFiles
     .filter((item): item is GeneratedProjectFile => Boolean(item && typeof item === "object"))
