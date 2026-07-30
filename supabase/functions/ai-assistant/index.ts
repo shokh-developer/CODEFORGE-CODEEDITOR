@@ -572,10 +572,9 @@ serve(async (req) => {
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     const hasImage = !!(imageData?.base64 && imageData?.mimeType);
 
-    // ── Vision path: image attached → call Gemini API directly ──
-    // The Lovable gateway does NOT support multimodal input.
-    // Gemini API accepts inline_data (base64) natively — no Storage upload needed.
-    if (hasImage && GEMINI_API_KEY) {
+    // ── Vision fallback: only if the Lovable gateway is unavailable ──
+    // Normally images go through the gateway (multimodal image_url block below).
+    if (hasImage && GEMINI_API_KEY && !LOVABLE_API_KEY) {
       const geminiModel = "gemini-2.0-flash";
       const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${GEMINI_API_KEY}`;
 
