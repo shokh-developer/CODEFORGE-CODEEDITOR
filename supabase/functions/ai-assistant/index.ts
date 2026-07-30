@@ -572,53 +572,72 @@ serve(async (req) => {
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     const hasImage = !!(imageData?.base64 && imageData?.mimeType);
 
-    // ── Vision fallback: only if the Lovable gateway is unavailable ──
-    // Normally images go through the gateway (multimodal image_url block below).
-    if (hasImage && GEMINI_API_KEY && !LOVABLE_API_KEY) {
-      const geminiModel = "gemini-2.0-flash";
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${GEMINI_API_KEY}`;
+    // Google keys used as a fallback when the Lovable gateway has no credits (402/429)
+    const googleKeys = [
+      GEMINI_API_KEY,
+      Deno.env.get("GOOGLE_AI_KEY_1"),
+      Deno.env.get("GOOGLE_AI_KEY_2"),
+      Deno.env.get("GOOGLE_AI_KEY_3"),
+    ].filter(Boolean) as string[];
 
-      // Convert chat history to Gemini format (role: "model" instead of "assistant")
+    const geminiGenerate = async (): Promise<string | null> => {
       const geminiHistory = (chatHistory || []).map((m: any) => ({
         role: m.role === "assistant" ? "model" : "user",
         parts: [{ text: String(m.content || "") }],
       }));
-
-      const currentParts: any[] = [
-        { text: prompt },
-        { inline_data: { mime_type: imageData.mimeType, data: imageData.base64 } },
-      ];
-
-      const geminiResp = await fetch(geminiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemPrompt }] },
-          contents: [...geminiHistory, { role: "user", parts: currentParts }],
-          generationConfig: {
-            temperature: isProjectMode ? 0.2 : 0.7,
-            maxOutputTokens: isProjectMode ? 16384 : 4096,
-          },
-        }),
-      });
-
-      if (!geminiResp.ok) {
-        const errText = await geminiResp.text();
-        console.error("[ai-assistant] Gemini vision error:", geminiResp.status, errText.slice(0, 300));
-        return new Response(
-          JSON.stringify({ error: "Vision AI xatolik. Qayta urinib ko'ring." }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      const currentParts: any[] = [{ text: String(prompt || "") }];
+      if (hasImage) {
+        currentParts.push({ inline_data: { mime_type: imageData.mimeType, data: imageData.base64 } });
       }
 
-      const geminiData = await geminiResp.json();
-      const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+      for (const key of googleKeys) {
+        for (const model of ["gemini-2.0-flash", "gemini-2.0-flash-lite"]) {
+          try {
+            const resp = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  system_instruction: { parts: [{ text: systemPrompt }] },
+                  contents: [...geminiHistory, { role: "user", parts: currentParts }],
+                  generationConfig: {
+                    temperature: isProjectMode ? 0.2 : 0.7,
+                    maxOutputTokens: isProjectMode ? 16384 : 4096,
+                  },
+                }),
+              }
+            );
+            if (resp.ok) {
+              const data = await resp.json();
+              const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (text) return text;
+            } else {
+              console.error("[ai-assistant] Gemini fallback error:", model, resp.status);
+            }
+          } catch (e) {
+            console.error("[ai-assistant] Gemini fallback exception:", e);
+          }
+        }
+      }
+      return null;
+    };
 
+    const geminiJsonResponse = async () => {
+      const text = await geminiGenerate();
+      if (text == null) return null;
       return new Response(
         JSON.stringify({ response: text, mode: isProjectMode ? "generate-project" : undefined }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    };
+
+    // ── Vision / no-gateway path: use Google directly ──
+    if (!LOVABLE_API_KEY && googleKeys.length > 0) {
+      const fallback = await geminiJsonResponse();
+      if (fallback) return fallback;
     }
+
 
     // ── Text-only path: no image → Lovable gateway (streaming) ──
     if (!LOVABLE_API_KEY) {
@@ -668,15 +687,14 @@ serve(async (req) => {
         }),
       });
 
-      if (resp.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limited. Please wait and try again." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (resp.status === 402) {
-        return new Response(JSON.stringify({ error: "Credits exhausted." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+      if (resp.status === 429 || resp.status === 402) {
+        const fallback = await geminiJsonResponse();
+        if (fallback) return fallback;
+        return new Response(JSON.stringify({
+          error: resp.status === 429
+            ? "AI hozir band (rate limit). Biroz kuting."
+            : "AI limiti tugadi. Biroz kuting yoki keyinroq urinib ko'ring.",
+        }), { status: resp.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       if (resp.ok) {
@@ -726,15 +744,14 @@ serve(async (req) => {
       }),
     });
 
-    if (response.status === 429) {
-      return new Response(JSON.stringify({ error: "Rate limited. Please wait and try again." }), {
-        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    if (response.status === 402) {
-      return new Response(JSON.stringify({ error: "Credits exhausted." }), {
-        status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (response.status === 429 || response.status === 402) {
+      const fallback = await geminiJsonResponse();
+      if (fallback) return fallback;
+      return new Response(JSON.stringify({
+        error: response.status === 429
+          ? "AI hozir band (rate limit). Biroz kuting."
+          : "AI limiti tugadi. Biroz kuting yoki keyinroq urinib ko'ring.",
+      }), { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     if (response.ok && response.body) {
