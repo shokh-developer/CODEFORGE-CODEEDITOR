@@ -60,7 +60,7 @@ async function callAI(systemPrompt: string, userPrompt: string, temperature: num
       const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+          "Lovable-API-Key": LOVABLE_API_KEY,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -95,6 +95,8 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  let requestType = "unknown";
 
   try {
     // --- Auth: require a valid JWT ---
@@ -132,6 +134,7 @@ serve(async (req) => {
     }
 
     const { code, language, cursorPosition, projectContext, type } = await req.json();
+    requestType = type || "unknown";
 
     // --- Credit deduction: 1 credit for inline, 5 for analysis operations ---
     const adminClient = createClient(
@@ -199,14 +202,14 @@ Kodning davomini yoz (FAQAT kod, hech qanday tushuntirma yoki markdown emas):`;
     
     if (error.message === "RATE_LIMIT") {
       return new Response(
-        JSON.stringify({ error: "Rate limit exceeded. Biroz kuting va qayta urinib ko'ring." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ completion: "⚠️ AI provayder limitlari vaqtincha tugagan. Birozdan keyin qayta urinib ko'ring.", type: requestType, unavailable: true }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
     if (error.message === "PAYMENT_REQUIRED") {
       return new Response(
-        JSON.stringify({ error: "AI xizmati hozir band. Biroz kuting va qayta urinib ko'ring." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ completion: "⚠️ AI xizmati hozir band. Birozdan keyin qayta urinib ko'ring.", type: requestType, unavailable: true }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

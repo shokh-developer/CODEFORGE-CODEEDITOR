@@ -514,6 +514,17 @@ const PROJECT_FILES_TOOL = {
   },
 };
 
+const aiUnavailableMessage = "AI provayder limitlari vaqtincha tugagan. Chat saqlandi — birozdan keyin qayta urinib ko'ring.";
+
+const unavailableResponse = (mode?: string) => new Response(
+  JSON.stringify({
+    response: `⚠️ ${aiUnavailableMessage}`,
+    unavailable: true,
+    ...(mode ? { mode } : {}),
+  }),
+  { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+);
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -590,8 +601,14 @@ serve(async (req) => {
         currentParts.push({ inline_data: { mime_type: imageData.mimeType, data: imageData.base64 } });
       }
 
-      for (const key of googleKeys) {
-        for (const model of ["gemini-2.0-flash", "gemini-2.0-flash-lite"]) {
+      const shuffledKeys = [...googleKeys];
+      for (let i = shuffledKeys.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffledKeys[i], shuffledKeys[j]] = [shuffledKeys[j], shuffledKeys[i]];
+      }
+
+      for (const key of shuffledKeys) {
+        for (const model of ["gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-3-flash-preview", "gemini-2.0-flash-lite", "gemini-2.0-flash"]) {
           try {
             const resp = await fetch(
               `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
@@ -613,7 +630,8 @@ serve(async (req) => {
               const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
               if (text) return text;
             } else {
-              console.error("[ai-assistant] Gemini fallback error:", model, resp.status);
+              const body = await resp.text().catch(() => "");
+              console.error("[ai-assistant] Gemini fallback error:", model, resp.status, body.slice(0, 180));
             }
           } catch (e) {
             console.error("[ai-assistant] Gemini fallback exception:", e);
@@ -670,7 +688,7 @@ serve(async (req) => {
       const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Lovable-API-Key": LOVABLE_API_KEY,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -690,11 +708,7 @@ serve(async (req) => {
       if (resp.status === 429 || resp.status === 402) {
         const fallback = await geminiJsonResponse();
         if (fallback) return fallback;
-        return new Response(JSON.stringify({
-          error: resp.status === 429
-            ? "AI hozir band (rate limit). Biroz kuting."
-            : "AI limiti tugadi. Biroz kuting yoki keyinroq urinib ko'ring.",
-        }), { status: resp.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return unavailableResponse("generate-project");
       }
 
       if (resp.ok) {
@@ -732,7 +746,7 @@ serve(async (req) => {
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Lovable-API-Key": LOVABLE_API_KEY,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -747,11 +761,7 @@ serve(async (req) => {
     if (response.status === 429 || response.status === 402) {
       const fallback = await geminiJsonResponse();
       if (fallback) return fallback;
-      return new Response(JSON.stringify({
-        error: response.status === 429
-          ? "AI hozir band (rate limit). Biroz kuting."
-          : "AI limiti tugadi. Biroz kuting yoki keyinroq urinib ko'ring.",
-      }), { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return unavailableResponse(isProjectMode ? "generate-project" : undefined);
     }
 
     if (response.ok && response.body) {

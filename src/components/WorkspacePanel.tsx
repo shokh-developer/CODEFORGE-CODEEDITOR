@@ -532,6 +532,12 @@ const BuildForgePanel = ({ roomId, code, language, files, activeFile, onCreateFi
       });
       if (error) throw new Error(error.message);
       if (data?.error) throw new Error(data.error);
+      if (data?.unavailable) {
+        const unavailableText = data.response || "⚠️ AI vaqtincha band. Birozdan keyin qayta urinib ko'ring.";
+        setMessages(prev => prev.map(m => m.id === loadingMsg.id ? { ...m, content: unavailableText } : m));
+        if (conversationId) await persistMessage(conversationId, "assistant", unavailableText);
+        return;
+      }
 
       const responseText = data?.response || "[]";
       let genFiles = normalizeGeneratedProjectFiles(responseText);
