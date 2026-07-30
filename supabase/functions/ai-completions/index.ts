@@ -137,28 +137,7 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
-    const creditAmount = type === "inline" ? 1 : 5;
-    const { data: creditResult, error: creditErr } = await adminClient.rpc("consume_credits", {
-      _user_id: userId,
-      _amount: creditAmount,
-    });
-    if (creditErr) {
-      console.error("consume_credits error:", creditErr);
-      return new Response(
-        JSON.stringify({ error: "Credit service unavailable. Please try again." }),
-        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    if (creditResult && (creditResult as { ok: boolean; balance: number; daily_limit: number }).ok === false) {
-      const r = creditResult as { ok: boolean; balance: number; daily_limit: number };
-      return new Response(
-        JSON.stringify({
-          error: `Kunlik credit limitingiz tugadi. Balans: ${r.balance}/${r.daily_limit}. Ertaga yangilanadi yoki planni yangilang.`,
-          credits: creditResult,
-        }),
-        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // Credits: AI completions are free (served via Lovable AI Gateway)
 
     let systemPrompt = "";
     let userPrompt = "";
