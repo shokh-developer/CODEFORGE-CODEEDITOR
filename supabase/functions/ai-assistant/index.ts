@@ -687,15 +687,14 @@ serve(async (req) => {
         }),
       });
 
-      if (resp.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limited. Please wait and try again." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (resp.status === 402) {
-        return new Response(JSON.stringify({ error: "Credits exhausted." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+      if (resp.status === 429 || resp.status === 402) {
+        const fallback = await geminiJsonResponse();
+        if (fallback) return fallback;
+        return new Response(JSON.stringify({
+          error: resp.status === 429
+            ? "AI hozir band (rate limit). Biroz kuting."
+            : "AI limiti tugadi. Biroz kuting yoki keyinroq urinib ko'ring.",
+        }), { status: resp.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       if (resp.ok) {
@@ -745,15 +744,14 @@ serve(async (req) => {
       }),
     });
 
-    if (response.status === 429) {
-      return new Response(JSON.stringify({ error: "Rate limited. Please wait and try again." }), {
-        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    if (response.status === 402) {
-      return new Response(JSON.stringify({ error: "Credits exhausted." }), {
-        status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (response.status === 429 || response.status === 402) {
+      const fallback = await geminiJsonResponse();
+      if (fallback) return fallback;
+      return new Response(JSON.stringify({
+        error: response.status === 429
+          ? "AI hozir band (rate limit). Biroz kuting."
+          : "AI limiti tugadi. Biroz kuting yoki keyinroq urinib ko'ring.",
+      }), { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     if (response.ok && response.body) {
