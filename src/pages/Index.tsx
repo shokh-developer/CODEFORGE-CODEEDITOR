@@ -105,6 +105,13 @@ const Index = () => {
           <div className="flex items-center gap-1">
             <Button
               variant="ghost" size="sm"
+              onClick={() => navigate("/typing")}
+              className="text-xs h-8 px-3 text-white/50 hover:text-white/80 hover:bg-white/[0.06]"
+            >
+              Typing
+            </Button>
+            <Button
+              variant="ghost" size="sm"
               onClick={() => navigate("/pricing")}
               className="text-xs h-8 px-3 text-white/50 hover:text-white/80 hover:bg-white/[0.06]"
             >
