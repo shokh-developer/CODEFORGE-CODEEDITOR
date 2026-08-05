@@ -11,6 +11,7 @@ import Profile from "./pages/Profile";
 import MyRooms from "./pages/MyRooms";
 import Settings from "./pages/Settings";
 import Pricing from "./pages/Pricing";
+import ForgeTyping from "./pages/ForgeTyping";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,6 +42,7 @@ const App = () => {
               <Route path="/my-rooms" element={<MyRooms />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/pricing" element={<Pricing />} />
+              <Route path="/typing" element={<ForgeTyping />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
