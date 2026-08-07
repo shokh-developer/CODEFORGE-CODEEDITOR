@@ -372,10 +372,11 @@ declare module "react-router-dom" {
       }
     });
 
-    // Cursor o'zgarganda inline completion ol
-    editor.onDidChangeCursorPosition(() => {
-      debouncedGetCompletion(editor, monaco);
+    // AI inline completion — manual trigger only (Ctrl/Cmd + I)
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyI, () => {
+      requestCompletion(editor, monaco);
     });
+
 
     // Sichqoncha context menu
     editor.onContextMenu((e: any) => {
