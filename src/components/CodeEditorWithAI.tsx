@@ -214,6 +214,66 @@ const CodeEditorWithAI = ({
     editorRef.current = editor;
     monacoRef.current = monaco;
 
+    // ── CodeForge Dark: a hand-tuned, VS Code-grade colour scheme ──────────
+    monaco.editor.defineTheme("codeforge-dark", {
+      base: "vs-dark",
+      inherit: true,
+      rules: [
+        { token: "", foreground: "c8d3f5" },
+        { token: "comment", foreground: "5c6a92", fontStyle: "italic" },
+        { token: "keyword", foreground: "c099ff" },
+        { token: "keyword.control", foreground: "c099ff" },
+        { token: "operator", foreground: "89ddff" },
+        { token: "number", foreground: "ff966c" },
+        { token: "string", foreground: "c3e88d" },
+        { token: "string.escape", foreground: "ffc777" },
+        { token: "regexp", foreground: "b4f9f8" },
+        { token: "type", foreground: "4fd6be" },
+        { token: "type.identifier", foreground: "4fd6be" },
+        { token: "identifier", foreground: "c8d3f5" },
+        { token: "variable", foreground: "c8d3f5" },
+        { token: "variable.parameter", foreground: "e0af68", fontStyle: "italic" },
+        { token: "function", foreground: "82aaff" },
+        { token: "delimiter", foreground: "89ddff" },
+        { token: "delimiter.bracket", foreground: "a9b8e8" },
+        { token: "tag", foreground: "ff757f" },
+        { token: "attribute.name", foreground: "ffc777" },
+        { token: "attribute.value", foreground: "c3e88d" },
+        { token: "metatag", foreground: "ff757f" },
+        { token: "constant", foreground: "ff966c" },
+        { token: "key", foreground: "82aaff" },
+      ],
+      colors: {
+        "editor.background": "#12131c",
+        "editor.foreground": "#c8d3f5",
+        "editorLineNumber.foreground": "#3b4261",
+        "editorLineNumber.activeForeground": "#82aaff",
+        "editor.lineHighlightBackground": "#1a1c29",
+        "editor.selectionBackground": "#2d3f76",
+        "editor.inactiveSelectionBackground": "#222436",
+        "editor.selectionHighlightBackground": "#2d3f7655",
+        "editorCursor.foreground": "#82aaff",
+        "editorIndentGuide.background": "#22243a",
+        "editorIndentGuide.activeBackground": "#3b4261",
+        "editorWhitespace.foreground": "#22243a",
+        "editorBracketMatch.background": "#2d3f7655",
+        "editorBracketMatch.border": "#82aaff66",
+        "editorGutter.background": "#12131c",
+        "editorWidget.background": "#1a1c29",
+        "editorWidget.border": "#2a2d40",
+        "editorSuggestWidget.background": "#1a1c29",
+        "editorSuggestWidget.border": "#2a2d40",
+        "editorSuggestWidget.selectedBackground": "#2d3f76",
+        "editorHoverWidget.background": "#1a1c29",
+        "scrollbarSlider.background": "#2a2d4055",
+        "scrollbarSlider.hoverBackground": "#3b426199",
+        "scrollbarSlider.activeBackground": "#3b4261cc",
+        "minimap.background": "#12131c",
+      },
+    });
+    monaco.editor.setTheme("codeforge-dark");
+
+
     if (!monacoTypesConfigured) {
       const compilerOptions = {
         allowJs: true,
