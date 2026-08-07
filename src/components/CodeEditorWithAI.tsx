@@ -544,7 +544,7 @@ declare module "react-router-dom" {
   return (
     <div className="h-full w-full relative">
       {/* Monaco Editor */}
-      <div className="h-full w-full rounded-lg overflow-hidden border border-border">
+      <div className="h-full w-full overflow-hidden" style={{ background: "#12131c" }}>
         <Editor
           height="100%"
           language={editorLanguage}
@@ -552,30 +552,36 @@ declare module "react-router-dom" {
           value={code}
           onChange={handleChange}
           onMount={handleEditorDidMount}
-          theme="vs-dark"
+          theme="codeforge-dark"
           options={{
-            fontSize: 13,
-            fontFamily: "'Fira Code', 'Consolas', monospace",
-            minimap: { enabled: true },
+            fontSize: 13.5,
+            lineHeight: 21,
+            fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
+            fontLigatures: true,
+            minimap: { enabled: true, renderCharacters: false, maxColumn: 80, size: "proportional" },
             scrollBeyondLastLine: false,
             wordWrap: "on",
             automaticLayout: true,
             tabSize: 2,
             readOnly: readOnly,
             cursorBlinking: "smooth",
-            cursorSmoothCaretAnimation: "on",
-            smoothScrolling: true,
-            padding: { top: 10, bottom: 10 },
+            cursorSmoothCaretAnimation: "off",
+            smoothScrolling: false,
+            padding: { top: 12, bottom: 12 },
             lineNumbers: "on",
-            renderLineHighlight: "all",
+            lineNumbersMinChars: 3,
+            renderLineHighlight: "line",
+            renderWhitespace: "selection",
+            guides: { indentation: true, bracketPairs: true },
             bracketPairColorization: { enabled: true },
-            suggest: {
-              showKeywords: true,
-              showSnippets: true,
-            },
+            stickyScroll: { enabled: true },
+            scrollbar: { verticalScrollbarSize: 10, horizontalScrollbarSize: 10, useShadows: false },
+            suggest: { showKeywords: true, showSnippets: true },
+            quickSuggestions: { other: true, comments: false, strings: false },
           }}
         />
       </div>
+
 
       {/* AI Loading Indicator */}
       <AnimatePresence>
