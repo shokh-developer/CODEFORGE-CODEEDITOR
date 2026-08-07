@@ -131,8 +131,8 @@ const FileExplorer = ({ files, activeFileId, onFileSelect, onCreateFile, onDelet
                     ? <ChevronDown className="h-3 w-3 text-muted-foreground/50 flex-shrink-0" />
                     : <ChevronRight className="h-3 w-3 text-muted-foreground/50 flex-shrink-0" />}
                   {isExpanded
-                    ? <FolderOpen className="h-3 w-3 text-yellow-500/80 flex-shrink-0" />
-                    : <Folder className="h-3 w-3 text-yellow-500/70 flex-shrink-0" />}
+                    ? <FolderIcon open className="h-3.5 w-3.5" />
+                    : <FolderIcon className="h-3.5 w-3.5" />}
                 </>
               ) : (
                 <>
@@ -189,7 +189,7 @@ const FileExplorer = ({ files, activeFileId, onFileSelect, onCreateFile, onDelet
   const renderCreateInput = (depth: number) => (
     <div className="flex items-center gap-1 py-px" style={{ paddingLeft: `${depth * 10 + 6}px`, paddingRight: "6px" }}>
       {isCreating?.type === "folder"
-        ? <Folder className="h-3 w-3 text-yellow-500/70 flex-shrink-0" />
+        ? <FolderIcon className="h-3.5 w-3.5" />
         : <File className="h-3 w-3 text-muted-foreground/50 flex-shrink-0" />}
       <Input value={newName} onChange={(e) => setNewName(e.target.value)}
         placeholder={isCreating?.type === "folder" ? "folder name..." : "file name..."}
