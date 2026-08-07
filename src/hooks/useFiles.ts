@@ -31,7 +31,15 @@ export const useFiles = (roomId: string | null) => {
   // Track IDs of files we inserted locally so their realtime INSERT events are ignored.
   // A boolean flag only suppresses the FIRST event; a Set handles batch inserts of N files.
   const localInsertIds = useRef<Set<string>>(new Set());
-  const isLocalUpdate = useRef(false);
+  // Per-file suppression window: we ignore realtime UPDATE echoes for files we
+  // just wrote ourselves. A single boolean used to let our own echo overwrite the
+  // editor mid-typing, which is what made typing feel frozen for seconds.
+  const localUpdateAt = useRef<Map<string, number>>(new Map());
+  const markLocalUpdate = (id: string) => localUpdateAt.current.set(id, Date.now());
+  const isEchoOfLocalUpdate = (id: string) => {
+    const ts = localUpdateAt.current.get(id);
+    return ts !== undefined && Date.now() - ts < 8000;
+  };
 
   // Fetch files
   useEffect(() => {
@@ -104,10 +112,7 @@ export const useFiles = (roomId: string | null) => {
             }
             setFiles(prev => [...prev, payload.new as FileItem]);
           } else if (payload.eventType === "UPDATE") {
-            if (isLocalUpdate.current) {
-              isLocalUpdate.current = false;
-              return;
-            }
+            if (isEchoOfLocalUpdate((payload.new as FileItem).id)) return;
             setFiles(prev => prev.map(f => f.id === payload.new.id ? payload.new as FileItem : f));
             setActiveFile(prev => prev?.id === payload.new.id ? payload.new as FileItem : prev);
           } else if (payload.eventType === "DELETE") {
@@ -219,7 +224,7 @@ export const useFiles = (roomId: string | null) => {
     const updatedFiles: FileItem[] = [];
     await Promise.all(toUpdate.map(async (e) => {
       const existing = existingFileMap.get(`${e.path}||${e.name}`)!;
-      isLocalUpdate.current = true;
+      markLocalUpdate(existing.id);
       const { data: updated } = await supabase
         .from("files")
         .update({ content: e.content ?? "", language: e.language || existing.language })
@@ -286,7 +291,7 @@ export const useFiles = (roomId: string | null) => {
   // Update file content
   const updateFileContent = useCallback(
     async (fileId: string, newContent: string) => {
-      isLocalUpdate.current = true;
+      markLocalUpdate(fileId);
 
       setFiles(prev => prev.map(f => f.id === fileId ? { ...f, content: newContent } : f));
       setActiveFile(prev => prev?.id === fileId ? { ...prev, content: newContent } : prev);
@@ -309,7 +314,7 @@ export const useFiles = (roomId: string | null) => {
 
   // Delete file
   const deleteFile = async (fileId: string) => {
-    isLocalUpdate.current = true;
+    markLocalUpdate(fileId);
 
     const { error } = await supabase
       .from("files")
@@ -334,7 +339,7 @@ export const useFiles = (roomId: string | null) => {
 
   // Rename file
   const renameFile = async (fileId: string, newName: string) => {
-    isLocalUpdate.current = true;
+    markLocalUpdate(fileId);
 
     const { error } = await supabase
       .from("files")
