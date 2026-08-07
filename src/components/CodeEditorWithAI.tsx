@@ -94,38 +94,36 @@ const CodeEditorWithAI = ({
     setMounted(true);
   }, []);
 
-  // Debounced inline completion
-  const debouncedGetCompletion = useCallback(
-    debounce(async (editor: any, monaco: any) => {
-      if (readOnly) return;
+  // Keep latest props in a ref so editor callbacks never go stale
+  // and never need to be re-registered (re-registering caused a new AI
+  // request on every keystroke, which made typing feel frozen).
+  const latest = useRef({ language, files, readOnly, getInlineCompletion });
+  latest.current = { language, files, readOnly, getInlineCompletion };
+  const inFlightRef = useRef(false);
 
-      const model = editor.getModel();
-      if (!model) return;
+  // Inline completion is now MANUAL only (Ctrl/Cmd + I) — no request per keystroke.
+  const requestCompletion = useCallback(async (editor: any, monaco: any) => {
+    const { readOnly: ro, language: lang, files: fs, getInlineCompletion: fn } = latest.current;
+    if (ro || inFlightRef.current) return;
 
-      const position = editor.getPosition();
-      if (!position) return;
+    const model = editor.getModel();
+    const position = editor.getPosition();
+    if (!model || !position) return;
 
-      const currentCode = model.getValue();
-      const cursorPosition = {
-        line: position.lineNumber,
-        column: position.column,
-      };
-
-      // Inline completion ol
-      const suggestion = await getInlineCompletion(
-        currentCode,
-        language,
-        cursorPosition,
-        files
+    inFlightRef.current = true;
+    try {
+      const suggestion = await fn(
+        model.getValue(),
+        lang,
+        { line: position.lineNumber, column: position.column },
+        fs
       );
+      if (suggestion) showGhostText(editor, monaco, suggestion, position);
+    } finally {
+      inFlightRef.current = false;
+    }
+  }, []);
 
-      if (suggestion) {
-        // Ghost text ko'rsat
-        showGhostText(editor, monaco, suggestion, position);
-      }
-    }, 800),
-    [language, files, readOnly, getInlineCompletion]
-  );
 
   // Ghost text ko'rsatish
   const showGhostText = (
@@ -215,6 +213,66 @@ const CodeEditorWithAI = ({
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
+
+    // ── CodeForge Dark: a hand-tuned, VS Code-grade colour scheme ──────────
+    monaco.editor.defineTheme("codeforge-dark", {
+      base: "vs-dark",
+      inherit: true,
+      rules: [
+        { token: "", foreground: "c8d3f5" },
+        { token: "comment", foreground: "5c6a92", fontStyle: "italic" },
+        { token: "keyword", foreground: "c099ff" },
+        { token: "keyword.control", foreground: "c099ff" },
+        { token: "operator", foreground: "89ddff" },
+        { token: "number", foreground: "ff966c" },
+        { token: "string", foreground: "c3e88d" },
+        { token: "string.escape", foreground: "ffc777" },
+        { token: "regexp", foreground: "b4f9f8" },
+        { token: "type", foreground: "4fd6be" },
+        { token: "type.identifier", foreground: "4fd6be" },
+        { token: "identifier", foreground: "c8d3f5" },
+        { token: "variable", foreground: "c8d3f5" },
+        { token: "variable.parameter", foreground: "e0af68", fontStyle: "italic" },
+        { token: "function", foreground: "82aaff" },
+        { token: "delimiter", foreground: "89ddff" },
+        { token: "delimiter.bracket", foreground: "a9b8e8" },
+        { token: "tag", foreground: "ff757f" },
+        { token: "attribute.name", foreground: "ffc777" },
+        { token: "attribute.value", foreground: "c3e88d" },
+        { token: "metatag", foreground: "ff757f" },
+        { token: "constant", foreground: "ff966c" },
+        { token: "key", foreground: "82aaff" },
+      ],
+      colors: {
+        "editor.background": "#12131c",
+        "editor.foreground": "#c8d3f5",
+        "editorLineNumber.foreground": "#3b4261",
+        "editorLineNumber.activeForeground": "#82aaff",
+        "editor.lineHighlightBackground": "#1a1c29",
+        "editor.selectionBackground": "#2d3f76",
+        "editor.inactiveSelectionBackground": "#222436",
+        "editor.selectionHighlightBackground": "#2d3f7655",
+        "editorCursor.foreground": "#82aaff",
+        "editorIndentGuide.background": "#22243a",
+        "editorIndentGuide.activeBackground": "#3b4261",
+        "editorWhitespace.foreground": "#22243a",
+        "editorBracketMatch.background": "#2d3f7655",
+        "editorBracketMatch.border": "#82aaff66",
+        "editorGutter.background": "#12131c",
+        "editorWidget.background": "#1a1c29",
+        "editorWidget.border": "#2a2d40",
+        "editorSuggestWidget.background": "#1a1c29",
+        "editorSuggestWidget.border": "#2a2d40",
+        "editorSuggestWidget.selectedBackground": "#2d3f76",
+        "editorHoverWidget.background": "#1a1c29",
+        "scrollbarSlider.background": "#2a2d4055",
+        "scrollbarSlider.hoverBackground": "#3b426199",
+        "scrollbarSlider.activeBackground": "#3b4261cc",
+        "minimap.background": "#12131c",
+      },
+    });
+    monaco.editor.setTheme("codeforge-dark");
+
 
     if (!monacoTypesConfigured) {
       const compilerOptions = {
@@ -374,10 +432,11 @@ declare module "react-router-dom" {
       }
     });
 
-    // Cursor o'zgarganda inline completion ol
-    editor.onDidChangeCursorPosition(() => {
-      debouncedGetCompletion(editor, monaco);
+    // AI inline completion — manual trigger only (Ctrl/Cmd + I)
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyI, () => {
+      requestCompletion(editor, monaco);
     });
+
 
     // Sichqoncha context menu
     editor.onContextMenu((e: any) => {
@@ -400,10 +459,12 @@ declare module "react-router-dom" {
   const handleChange = (value: string | undefined) => {
     if (value !== undefined) {
       onChange(value);
-      // Suggestion o'chir chunki kod o'zgardi
-      rejectSuggestion();
+      // Only clear a suggestion if one is actually on screen — avoids a
+      // state update (and full re-render) on every single keystroke.
+      if (decorationsRef.current.length > 0 || currentSuggestion) rejectSuggestion();
     }
   };
+
 
   // Code actions
   const handleExplain = async () => {
@@ -483,7 +544,7 @@ declare module "react-router-dom" {
   return (
     <div className="h-full w-full relative">
       {/* Monaco Editor */}
-      <div className="h-full w-full rounded-lg overflow-hidden border border-border">
+      <div className="h-full w-full overflow-hidden" style={{ background: "#12131c" }}>
         <Editor
           height="100%"
           language={editorLanguage}
@@ -491,30 +552,36 @@ declare module "react-router-dom" {
           value={code}
           onChange={handleChange}
           onMount={handleEditorDidMount}
-          theme="vs-dark"
+          theme="codeforge-dark"
           options={{
-            fontSize: 13,
-            fontFamily: "'Fira Code', 'Consolas', monospace",
-            minimap: { enabled: true },
+            fontSize: 13.5,
+            lineHeight: 21,
+            fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
+            fontLigatures: true,
+            minimap: { enabled: true, renderCharacters: false, maxColumn: 80, size: "proportional" },
             scrollBeyondLastLine: false,
             wordWrap: "on",
             automaticLayout: true,
             tabSize: 2,
             readOnly: readOnly,
             cursorBlinking: "smooth",
-            cursorSmoothCaretAnimation: "on",
-            smoothScrolling: true,
-            padding: { top: 10, bottom: 10 },
+            cursorSmoothCaretAnimation: "off",
+            smoothScrolling: false,
+            padding: { top: 12, bottom: 12 },
             lineNumbers: "on",
-            renderLineHighlight: "all",
+            lineNumbersMinChars: 3,
+            renderLineHighlight: "line",
+            renderWhitespace: "selection",
+            guides: { indentation: true, bracketPairs: true },
             bracketPairColorization: { enabled: true },
-            suggest: {
-              showKeywords: true,
-              showSnippets: true,
-            },
+            stickyScroll: { enabled: true },
+            scrollbar: { verticalScrollbarSize: 10, horizontalScrollbarSize: 10, useShadows: false },
+            suggest: { showKeywords: true, showSnippets: true },
+            quickSuggestions: { other: true, comments: false, strings: false },
           }}
         />
       </div>
+
 
       {/* AI Loading Indicator */}
       <AnimatePresence>

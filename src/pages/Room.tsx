@@ -146,26 +146,41 @@ const Room = () => {
     return () => { supabase.removeChannel(channel); };
   }, [room?.id, user?.id, navigate, toast]);
 
+  // Only reload editor content when a DIFFERENT file becomes active.
+  // (Depending on the whole object reset the buffer after every autosave,
+  // which jumped the cursor and made typing feel laggy.)
+  const loadedFileIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (activeFile) setLocalContent(activeFile.content);
-  }, [activeFile]);
+    if (activeFile && loadedFileIdRef.current !== activeFile.id) {
+      loadedFileIdRef.current = activeFile.id;
+      setLocalContent(activeFile.content);
+    }
+  }, [activeFile?.id, activeFile]);
 
   const handleFileSelect = (file: typeof activeFile) => {
     if (!file || file.is_folder) return;
     setActiveFile(file);
+    loadedFileIdRef.current = file.id;
     setLocalContent(file.content);
     if (!openTabs.includes(file.id)) setOpenTabs(prev => [...prev, file.id]);
   };
 
+  const lastSavedRef = useRef<Record<string, string>>({});
   const debouncedSave = useMemo(
-    () => debounce((fileId: string, content: string) => { updateFileContent(fileId, content); }, 500),
+    () => debounce((fileId: string, content: string) => {
+      if (lastSavedRef.current[fileId] === content) return;
+      lastSavedRef.current[fileId] = content;
+      updateFileContent(fileId, content);
+    }, 900),
     [updateFileContent]
   );
 
-  const handleCodeChange = (newContent: string) => {
+  const handleCodeChange = useCallback((newContent: string) => {
     setLocalContent(newContent);
-    if (activeFile) debouncedSave(activeFile.id, newContent);
-  };
+    const id = activeFile?.id;
+    if (id) debouncedSave(id, newContent);
+  }, [activeFile?.id, debouncedSave]);
+
 
   const handleTabClose = (tabId: string) => {
     setOpenTabs(prev => prev.filter(id => id !== tabId));

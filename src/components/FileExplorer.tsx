@@ -5,6 +5,7 @@ import {
   FileCode, FileJson, FileText, Braces, Hash, Terminal, Globe, X, Check, FolderPlus, FilePlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FileIcon, FolderIcon } from "@/components/FileIcon";
 import { Input } from "@/components/ui/input";
 import {
   ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator,
@@ -21,62 +22,6 @@ interface FileExplorerProps {
   onDeleteFile: (fileId: string) => void;
   onRenameFile: (fileId: string, newName: string) => void;
 }
-
-const getFileIcon = (name: string) => {
-  const ext = name.split(".").pop()?.toLowerCase();
-  const cls = "h-3 w-3 flex-shrink-0";
-  switch (ext) {
-    case "js": case "jsx": case "mjs": case "cjs":
-      return <Braces className={cn(cls, "text-yellow-400/90")} />;
-    case "ts": case "tsx": case "mts": case "cts":
-      return <FileCode className={cn(cls, "text-blue-400/90")} />;
-    case "html": case "htm":
-      return <Globe className={cn(cls, "text-orange-400/90")} />;
-    case "css": case "scss": case "sass": case "less":
-      return <Hash className={cn(cls, "text-pink-400/90")} />;
-    case "json": case "jsonc":
-      return <FileJson className={cn(cls, "text-yellow-300/90")} />;
-    case "py": case "pyw":
-      return <Terminal className={cn(cls, "text-green-400/90")} />;
-    case "md": case "mdx": case "markdown":
-      return <FileText className={cn(cls, "text-slate-400/90")} />;
-    case "cpp": case "cc": case "cxx": case "c": case "h": case "hpp": case "hxx":
-      return <FileCode className={cn(cls, "text-blue-500/90")} />;
-    case "cs":
-      return <FileCode className={cn(cls, "text-purple-400/90")} />;
-    case "java":
-      return <FileCode className={cn(cls, "text-red-400/90")} />;
-    case "go":
-      return <FileCode className={cn(cls, "text-cyan-400/90")} />;
-    case "rs":
-      return <FileCode className={cn(cls, "text-orange-500/90")} />;
-    case "php":
-      return <FileCode className={cn(cls, "text-violet-400/90")} />;
-    case "rb":
-      return <FileCode className={cn(cls, "text-red-500/90")} />;
-    case "swift":
-      return <FileCode className={cn(cls, "text-orange-400/90")} />;
-    case "kt": case "kts":
-      return <FileCode className={cn(cls, "text-purple-500/90")} />;
-    case "dart":
-      return <FileCode className={cn(cls, "text-cyan-500/90")} />;
-    case "lua":
-      return <FileCode className={cn(cls, "text-blue-300/90")} />;
-    case "sql":
-      return <FileJson className={cn(cls, "text-emerald-400/90")} />;
-    case "sh": case "bash": case "zsh": case "fish":
-      return <Terminal className={cn(cls, "text-emerald-500/90")} />;
-    case "yaml": case "yml":
-      return <FileText className={cn(cls, "text-yellow-500/90")} />;
-    case "xml": case "svg":
-      return <FileCode className={cn(cls, "text-orange-300/90")} />;
-    case "env": case "env.example": case "env.local":
-      return <FileText className={cn(cls, "text-muted-foreground/70")} />;
-    case "toml": case "ini": case "cfg":
-      return <FileText className={cn(cls, "text-amber-400/90")} />;
-    default: return <File className={cn(cls, "text-muted-foreground/60")} />;
-  }
-};
 
 const getLanguageFromName = (name: string): string => {
   const ext = name.split(".").pop()?.toLowerCase();
@@ -186,13 +131,13 @@ const FileExplorer = ({ files, activeFileId, onFileSelect, onCreateFile, onDelet
                     ? <ChevronDown className="h-3 w-3 text-muted-foreground/50 flex-shrink-0" />
                     : <ChevronRight className="h-3 w-3 text-muted-foreground/50 flex-shrink-0" />}
                   {isExpanded
-                    ? <FolderOpen className="h-3 w-3 text-yellow-500/80 flex-shrink-0" />
-                    : <Folder className="h-3 w-3 text-yellow-500/70 flex-shrink-0" />}
+                    ? <FolderIcon open className="h-3.5 w-3.5" />
+                    : <FolderIcon className="h-3.5 w-3.5" />}
                 </>
               ) : (
                 <>
                   <span className="w-3 flex-shrink-0" />
-                  {getFileIcon(file.name)}
+                  <FileIcon name={file.name} className="h-3.5 w-3.5" />
                 </>
               )}
               {editingId === file.id ? (
@@ -244,7 +189,7 @@ const FileExplorer = ({ files, activeFileId, onFileSelect, onCreateFile, onDelet
   const renderCreateInput = (depth: number) => (
     <div className="flex items-center gap-1 py-px" style={{ paddingLeft: `${depth * 10 + 6}px`, paddingRight: "6px" }}>
       {isCreating?.type === "folder"
-        ? <Folder className="h-3 w-3 text-yellow-500/70 flex-shrink-0" />
+        ? <FolderIcon className="h-3.5 w-3.5" />
         : <File className="h-3 w-3 text-muted-foreground/50 flex-shrink-0" />}
       <Input value={newName} onChange={(e) => setNewName(e.target.value)}
         placeholder={isCreating?.type === "folder" ? "folder name..." : "file name..."}
