@@ -459,10 +459,12 @@ declare module "react-router-dom" {
   const handleChange = (value: string | undefined) => {
     if (value !== undefined) {
       onChange(value);
-      // Suggestion o'chir chunki kod o'zgardi
-      rejectSuggestion();
+      // Only clear a suggestion if one is actually on screen — avoids a
+      // state update (and full re-render) on every single keystroke.
+      if (decorationsRef.current.length > 0 || currentSuggestion) rejectSuggestion();
     }
   };
+
 
   // Code actions
   const handleExplain = async () => {
