@@ -94,38 +94,36 @@ const CodeEditorWithAI = ({
     setMounted(true);
   }, []);
 
-  // Debounced inline completion
-  const debouncedGetCompletion = useCallback(
-    debounce(async (editor: any, monaco: any) => {
-      if (readOnly) return;
+  // Keep latest props in a ref so editor callbacks never go stale
+  // and never need to be re-registered (re-registering caused a new AI
+  // request on every keystroke, which made typing feel frozen).
+  const latest = useRef({ language, files, readOnly, getInlineCompletion });
+  latest.current = { language, files, readOnly, getInlineCompletion };
+  const inFlightRef = useRef(false);
 
-      const model = editor.getModel();
-      if (!model) return;
+  // Inline completion is now MANUAL only (Ctrl/Cmd + I) — no request per keystroke.
+  const requestCompletion = useCallback(async (editor: any, monaco: any) => {
+    const { readOnly: ro, language: lang, files: fs, getInlineCompletion: fn } = latest.current;
+    if (ro || inFlightRef.current) return;
 
-      const position = editor.getPosition();
-      if (!position) return;
+    const model = editor.getModel();
+    const position = editor.getPosition();
+    if (!model || !position) return;
 
-      const currentCode = model.getValue();
-      const cursorPosition = {
-        line: position.lineNumber,
-        column: position.column,
-      };
-
-      // Inline completion ol
-      const suggestion = await getInlineCompletion(
-        currentCode,
-        language,
-        cursorPosition,
-        files
+    inFlightRef.current = true;
+    try {
+      const suggestion = await fn(
+        model.getValue(),
+        lang,
+        { line: position.lineNumber, column: position.column },
+        fs
       );
+      if (suggestion) showGhostText(editor, monaco, suggestion, position);
+    } finally {
+      inFlightRef.current = false;
+    }
+  }, []);
 
-      if (suggestion) {
-        // Ghost text ko'rsat
-        showGhostText(editor, monaco, suggestion, position);
-      }
-    }, 800),
-    [language, files, readOnly, getInlineCompletion]
-  );
 
   // Ghost text ko'rsatish
   const showGhostText = (
