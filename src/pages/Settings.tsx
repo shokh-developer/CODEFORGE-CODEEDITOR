@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Palette, Check, Globe } from "lucide-react";
+import { ArrowLeft, Palette, Check, Globe, Siren } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useTheme, Theme } from "@/contexts/ThemeContext";
+import { useAdmin } from "@/hooks/useAdmin";
 
 const themes: { id: Theme; name: string; description: string; colors: string[] }[] = [
   { id: "tokyo-night", name: "Tokyo Night", description: "Dark blue-violet, inspired by VS Code", colors: ["#1a1b26", "#7aa2f7", "#bb9af7", "#7dcfff"] },
@@ -27,6 +28,8 @@ type UiLanguage = (typeof uiLanguages)[number]["id"];
 const Settings = () => {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
+  const { isAdmin } = useAdmin();
+
   const [language, setLanguage] = useState<UiLanguage>("en");
 
   useEffect(() => {
@@ -146,7 +149,31 @@ const Settings = () => {
             </div>
           </div>
         </motion.div>
+
+        {/* Admin: Incident Response */}
+        {isAdmin && (
+          <motion.div className="mt-6" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+            <button
+              type="button"
+              onClick={() => navigate("/security-ops")}
+              className="glass-card w-full rounded-xl p-6 text-left transition-colors hover:border-destructive/40"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-destructive/15 flex items-center justify-center">
+                  <Siren className="h-5 w-5 text-destructive" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">ForgeShield · Incident Response</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Buzib kirish, DDoS va tiklash bo'yicha admin konsoli
+                  </p>
+                </div>
+              </div>
+            </button>
+          </motion.div>
+        )}
       </div>
+
     </div>
   );
 };
