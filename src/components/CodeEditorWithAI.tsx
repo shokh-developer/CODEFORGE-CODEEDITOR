@@ -125,6 +125,17 @@ const CodeEditorWithAI = ({
   }, []);
 
 
+  // Keep the live suggestion in a ref: Monaco commands are registered once on
+  // mount, so a state closure would always read `null` (this is why Tab/Esc
+  // never worked).
+  const suggestionRef = useRef<string | null>(null);
+  suggestionRef.current = currentSuggestion;
+  const suggestionVisibleKeyRef = useRef<any>(null);
+
+  const setSuggestionVisible = (visible: boolean) => {
+    suggestionVisibleKeyRef.current?.set(visible);
+  };
+
   // Ghost text ko'rsatish
   const showGhostText = (
     editor: any,
@@ -137,7 +148,9 @@ const CodeEditorWithAI = ({
       editor.deltaDecorations(decorationsRef.current, []);
     }
 
-    // Yangi ghost text qo'sh
+    // Yangi ghost text qo'sh (faqat birinchi qator inline ko'rsatiladi)
+    const firstLine = suggestion.split("\n")[0];
+    const extraLines = suggestion.split("\n").length - 1;
     const newDecorations = editor.deltaDecorations(
       [],
       [
@@ -150,7 +163,7 @@ const CodeEditorWithAI = ({
           ),
           options: {
             after: {
-              content: suggestion,
+              content: extraLines > 0 ? `${firstLine}  ⏎ +${extraLines}` : firstLine,
               inlineClassName: "ghost-text-suggestion",
             },
           },
@@ -159,17 +172,18 @@ const CodeEditorWithAI = ({
     );
 
     decorationsRef.current = newDecorations;
+    setSuggestionVisible(true);
   };
 
-  // Ghost textni qabul qilish (Tab)
+  // Ghost textni qabul qilish (Tab yoki ✓ tugma)
   const acceptSuggestion = useCallback(() => {
-    if (!currentSuggestion || !editorRef.current) return;
+    const suggestion = suggestionRef.current;
+    if (!suggestion || !editorRef.current) return;
 
     const editor = editorRef.current;
     const position = editor.getPosition();
 
     if (position) {
-      // Ghost textni qo'sh
       editor.executeEdits("ai-completion", [
         {
           range: {
@@ -178,28 +192,28 @@ const CodeEditorWithAI = ({
             endLineNumber: position.lineNumber,
             endColumn: position.column,
           },
-          text: currentSuggestion,
+          text: suggestion,
         },
       ]);
 
-      // Cursorni oxiriga o'tqaz
-      const newPosition = editor.getModel()?.getPositionAt(
-        editor.getModel()?.getOffsetAt(position) + currentSuggestion.length
+      const model = editor.getModel();
+      const newPosition = model?.getPositionAt(
+        model.getOffsetAt(position) + suggestion.length
       );
-      if (newPosition) {
-        editor.setPosition(newPosition);
-      }
+      if (newPosition) editor.setPosition(newPosition);
     }
 
-    // Ghost textni o'chir
     if (decorationsRef.current.length > 0) {
       editor.deltaDecorations(decorationsRef.current, []);
       decorationsRef.current = [];
     }
+    setSuggestionVisible(false);
+    suggestionRef.current = null;
     clearSuggestion();
-  }, [currentSuggestion, clearSuggestion]);
+    editor.focus();
+  }, [clearSuggestion]);
 
-  // Ghost textni rad etish (Esc)
+  // Ghost textni rad etish (Esc yoki ✗ tugma)
   const rejectSuggestion = useCallback(() => {
     if (!editorRef.current) return;
 
@@ -207,8 +221,11 @@ const CodeEditorWithAI = ({
       editorRef.current.deltaDecorations(decorationsRef.current, []);
       decorationsRef.current = [];
     }
+    setSuggestionVisible(false);
+    suggestionRef.current = null;
     clearSuggestion();
   }, [clearSuggestion]);
+
 
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
@@ -415,27 +432,18 @@ declare module "react-router-dom" {
       monacoTypesConfigured = true;
     }
 
-    // Tab tugmasini qo'lga ol
-    editor.addCommand(monaco.KeyCode.Tab, () => {
-      if (currentSuggestion) {
-        acceptSuggestion();
-      } else {
-        // Default tab behavior
-        editor.trigger("keyboard", "tab", {});
-      }
-    });
+    // Tab / Esc faqat AI taklifi ekranda turganda ushlanadi — aks holda
+    // muharrirning standart Tab/Esc xatti-harakati saqlanadi.
+    suggestionVisibleKeyRef.current = editor.createContextKey("aiSuggestionVisible", false);
 
-    // Escape tugmasini qo'lga ol
-    editor.addCommand(monaco.KeyCode.Escape, () => {
-      if (currentSuggestion) {
-        rejectSuggestion();
-      }
-    });
+    editor.addCommand(monaco.KeyCode.Tab, () => acceptSuggestion(), "aiSuggestionVisible");
+    editor.addCommand(monaco.KeyCode.Escape, () => rejectSuggestion(), "aiSuggestionVisible");
 
     // AI inline completion — manual trigger only (Ctrl/Cmd + I)
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyI, () => {
       requestCompletion(editor, monaco);
     });
+
 
 
     // Sichqoncha context menu
@@ -444,16 +452,20 @@ declare module "react-router-dom" {
       setShowActions(true);
     });
 
-    // Ghost text uchun CSS stil
-    const styleElement = document.createElement("style");
-    styleElement.textContent = `
-      .ghost-text-suggestion {
-        color: #6b7280 !important;
-        font-style: italic;
-        opacity: 0.6;
-      }
-    `;
-    document.head.appendChild(styleElement);
+    // Ghost text uchun CSS stil (bir marta)
+    if (!document.getElementById("cf-ghost-text-style")) {
+      const styleElement = document.createElement("style");
+      styleElement.id = "cf-ghost-text-style";
+      styleElement.textContent = `
+        .ghost-text-suggestion {
+          color: #7f8cb0 !important;
+          font-style: italic;
+          opacity: 0.75;
+        }
+      `;
+      document.head.appendChild(styleElement);
+    }
+
   };
 
   const handleChange = (value: string | undefined) => {
@@ -598,24 +610,43 @@ declare module "react-router-dom" {
         )}
       </AnimatePresence>
 
-      {/* Suggestion Accept/Reject Hint */}
+      {/* Suggestion Accept/Reject bar */}
       <AnimatePresence>
         {currentSuggestion && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="absolute bottom-4 left-4 flex items-center gap-4 px-3 py-2 bg-background/90 rounded-lg border border-border"
+            className="absolute bottom-4 left-4 z-30 flex items-center gap-2 px-2 py-1.5 rounded-lg border border-border bg-card/95 backdrop-blur shadow-lg"
           >
-            <span className="text-xs text-muted-foreground">
-              <kbd className="px-1.5 py-0.5 rounded bg-muted text-xs">Tab</kbd> accept
+            <span className="flex items-center gap-1.5 px-1 text-[11px] text-muted-foreground">
+              <Sparkles className="h-3 w-3 text-primary" />
+              AI taklifi
             </span>
-            <span className="text-xs text-muted-foreground">
-              <kbd className="px-1.5 py-0.5 rounded bg-muted text-xs">Esc</kbd> dismiss
-            </span>
+            <button
+              type="button"
+              onClick={acceptSuggestion}
+              title="Qabul qilish (Tab)"
+              className="flex items-center gap-1 rounded-md border border-accent/40 bg-accent/15 px-2 py-1 text-[11px] font-medium text-accent transition-colors hover:bg-accent/25"
+            >
+              <Check className="h-3.5 w-3.5" />
+              Qabul
+              <kbd className="ml-1 rounded bg-muted px-1 text-[10px] text-muted-foreground">Tab</kbd>
+            </button>
+            <button
+              type="button"
+              onClick={rejectSuggestion}
+              title="Rad etish (Esc)"
+              className="flex items-center gap-1 rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1 text-[11px] font-medium text-destructive transition-colors hover:bg-destructive/20"
+            >
+              <X className="h-3.5 w-3.5" />
+              Rad
+              <kbd className="ml-1 rounded bg-muted px-1 text-[10px] text-muted-foreground">Esc</kbd>
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
+
 
       {/* Context Menu - Code Actions */}
       <AnimatePresence>
