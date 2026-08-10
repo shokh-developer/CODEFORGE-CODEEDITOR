@@ -452,16 +452,20 @@ declare module "react-router-dom" {
       setShowActions(true);
     });
 
-    // Ghost text uchun CSS stil
-    const styleElement = document.createElement("style");
-    styleElement.textContent = `
-      .ghost-text-suggestion {
-        color: #6b7280 !important;
-        font-style: italic;
-        opacity: 0.6;
-      }
-    `;
-    document.head.appendChild(styleElement);
+    // Ghost text uchun CSS stil (bir marta)
+    if (!document.getElementById("cf-ghost-text-style")) {
+      const styleElement = document.createElement("style");
+      styleElement.id = "cf-ghost-text-style";
+      styleElement.textContent = `
+        .ghost-text-suggestion {
+          color: #7f8cb0 !important;
+          font-style: italic;
+          opacity: 0.75;
+        }
+      `;
+      document.head.appendChild(styleElement);
+    }
+
   };
 
   const handleChange = (value: string | undefined) => {
