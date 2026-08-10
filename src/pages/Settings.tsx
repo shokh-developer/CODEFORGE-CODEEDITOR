@@ -28,6 +28,8 @@ type UiLanguage = (typeof uiLanguages)[number]["id"];
 const Settings = () => {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
+  const { isAdmin } = useAdmin();
+
   const [language, setLanguage] = useState<UiLanguage>("en");
 
   useEffect(() => {
