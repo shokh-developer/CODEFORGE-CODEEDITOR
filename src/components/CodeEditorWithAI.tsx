@@ -125,6 +125,17 @@ const CodeEditorWithAI = ({
   }, []);
 
 
+  // Keep the live suggestion in a ref: Monaco commands are registered once on
+  // mount, so a state closure would always read `null` (this is why Tab/Esc
+  // never worked).
+  const suggestionRef = useRef<string | null>(null);
+  suggestionRef.current = currentSuggestion;
+  const suggestionVisibleKeyRef = useRef<any>(null);
+
+  const setSuggestionVisible = (visible: boolean) => {
+    suggestionVisibleKeyRef.current?.set(visible);
+  };
+
   // Ghost text ko'rsatish
   const showGhostText = (
     editor: any,
@@ -137,7 +148,9 @@ const CodeEditorWithAI = ({
       editor.deltaDecorations(decorationsRef.current, []);
     }
 
-    // Yangi ghost text qo'sh
+    // Yangi ghost text qo'sh (faqat birinchi qator inline ko'rsatiladi)
+    const firstLine = suggestion.split("\n")[0];
+    const extraLines = suggestion.split("\n").length - 1;
     const newDecorations = editor.deltaDecorations(
       [],
       [
@@ -150,7 +163,7 @@ const CodeEditorWithAI = ({
           ),
           options: {
             after: {
-              content: suggestion,
+              content: extraLines > 0 ? `${firstLine}  ⏎ +${extraLines}` : firstLine,
               inlineClassName: "ghost-text-suggestion",
             },
           },
@@ -159,17 +172,18 @@ const CodeEditorWithAI = ({
     );
 
     decorationsRef.current = newDecorations;
+    setSuggestionVisible(true);
   };
 
-  // Ghost textni qabul qilish (Tab)
+  // Ghost textni qabul qilish (Tab yoki ✓ tugma)
   const acceptSuggestion = useCallback(() => {
-    if (!currentSuggestion || !editorRef.current) return;
+    const suggestion = suggestionRef.current;
+    if (!suggestion || !editorRef.current) return;
 
     const editor = editorRef.current;
     const position = editor.getPosition();
 
     if (position) {
-      // Ghost textni qo'sh
       editor.executeEdits("ai-completion", [
         {
           range: {
@@ -178,28 +192,28 @@ const CodeEditorWithAI = ({
             endLineNumber: position.lineNumber,
             endColumn: position.column,
           },
-          text: currentSuggestion,
+          text: suggestion,
         },
       ]);
 
-      // Cursorni oxiriga o'tqaz
-      const newPosition = editor.getModel()?.getPositionAt(
-        editor.getModel()?.getOffsetAt(position) + currentSuggestion.length
+      const model = editor.getModel();
+      const newPosition = model?.getPositionAt(
+        model.getOffsetAt(position) + suggestion.length
       );
-      if (newPosition) {
-        editor.setPosition(newPosition);
-      }
+      if (newPosition) editor.setPosition(newPosition);
     }
 
-    // Ghost textni o'chir
     if (decorationsRef.current.length > 0) {
       editor.deltaDecorations(decorationsRef.current, []);
       decorationsRef.current = [];
     }
+    setSuggestionVisible(false);
+    suggestionRef.current = null;
     clearSuggestion();
-  }, [currentSuggestion, clearSuggestion]);
+    editor.focus();
+  }, [clearSuggestion]);
 
-  // Ghost textni rad etish (Esc)
+  // Ghost textni rad etish (Esc yoki ✗ tugma)
   const rejectSuggestion = useCallback(() => {
     if (!editorRef.current) return;
 
@@ -207,8 +221,11 @@ const CodeEditorWithAI = ({
       editorRef.current.deltaDecorations(decorationsRef.current, []);
       decorationsRef.current = [];
     }
+    setSuggestionVisible(false);
+    suggestionRef.current = null;
     clearSuggestion();
   }, [clearSuggestion]);
+
 
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
