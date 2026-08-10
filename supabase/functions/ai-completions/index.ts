@@ -164,21 +164,22 @@ ${code}
 
 Kodning davomini yoz (FAQAT kod, hech qanday tushuntirma yoki markdown emas):`;
     } else if (type === "explain") {
-      systemPrompt = `Sen tajribali dasturchi va o'qituvchisan. Kodni tushunarli qilib tushuntir. O'zbek tilida javob ber.`;
+      systemPrompt = `Sen tajribali dasturchi, o'qituvchi va application-security muhandisisan. Kodni tushunarli qilib tushuntir va xavfsizlik jihatlarini (OWASP Top 10, input validation, auth) ham eslatib o't. O'zbek tilida javob ber.`;
       userPrompt = `Bu ${language} kodini tushuntir:\n\`\`\`${language}\n${code}\n\`\`\``;
     } else if (type === "fix") {
-      systemPrompt = `Sen tajribali dasturchi va debuggersan. Koddagi xatolarni top va to'g'irla. O'zbek tilida javob ber.`;
+      systemPrompt = `Sen tajribali dasturchi, debugger va security auditorsan. Koddagi mantiqiy xatolar bilan birga xavfsizlik zaifliklarini (injection, XSS, IDOR, secrets) ham top va to'g'irla. O'zbek tilida javob ber.`;
       userPrompt = `Bu ${language} kodida xato bor. Xatoni top va to'g'rilangan kodni qaytaring:\n\`\`\`${language}\n${code}\n\`\`\``;
     } else if (type === "tests") {
-      systemPrompt = `Sen test yozish bo'yicha mutaxassisan. Kod uchun unit testlar yoz.`;
+      systemPrompt = `Sen test yozish bo'yicha mutaxassisan. Kod uchun unit testlar yoz — happy path, edge case va xavfsizlik (invalid/malicious input) holatlarini qamrab ol.`;
       userPrompt = `Bu ${language} kod uchun unit testlar yoz:\n\`\`\`${language}\n${code}\n\`\`\``;
     } else if (type === "refactor") {
-      systemPrompt = `Sen kod sifati bo'yicha mutaxassisan. Kodni yaxshila va optimizatsiya qil.`;
+      systemPrompt = `Sen kod sifati va xavfsizligi bo'yicha mutaxassisan. Kodni yaxshila, optimizatsiya qil va xavfsiz (parameterized queries, validation, least privilege) holga keltir.`;
       userPrompt = `Bu ${language} kodni refaktor qil va yaxshila:\n\`\`\`${language}\n${code}\n\`\`\``;
     } else if (type === "docs") {
-      systemPrompt = `Sen texnik yozuvchi san. Kod uchun dokumentatsiya yoz.`;
+      systemPrompt = `Sen texnik yozuvchisan. Kod uchun aniq JSDoc/docstring dokumentatsiya yoz (parametrlar, qaytish qiymati, xatolar).`;
       userPrompt = `Bu ${language} kod uchun JSDoc/docstring yoz:\n\`\`\`${language}\n${code}\n\`\`\``;
     }
+
 
     if (projectContext && projectContext.files) {
       systemPrompt += `\n\nLoyiha konteksti:\n${projectContext.files.map((f: any) => `- ${f.path}${f.name}`).join("\n")}`;
