@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Palette, Check, Globe } from "lucide-react";
+import { ArrowLeft, Palette, Check, Globe, Siren } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useTheme, Theme } from "@/contexts/ThemeContext";
+import { useAdmin } from "@/hooks/useAdmin";
 
 const themes: { id: Theme; name: string; description: string; colors: string[] }[] = [
   { id: "tokyo-night", name: "Tokyo Night", description: "Dark blue-violet, inspired by VS Code", colors: ["#1a1b26", "#7aa2f7", "#bb9af7", "#7dcfff"] },
