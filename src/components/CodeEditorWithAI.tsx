@@ -432,27 +432,18 @@ declare module "react-router-dom" {
       monacoTypesConfigured = true;
     }
 
-    // Tab tugmasini qo'lga ol
-    editor.addCommand(monaco.KeyCode.Tab, () => {
-      if (currentSuggestion) {
-        acceptSuggestion();
-      } else {
-        // Default tab behavior
-        editor.trigger("keyboard", "tab", {});
-      }
-    });
+    // Tab / Esc faqat AI taklifi ekranda turganda ushlanadi — aks holda
+    // muharrirning standart Tab/Esc xatti-harakati saqlanadi.
+    suggestionVisibleKeyRef.current = editor.createContextKey("aiSuggestionVisible", false);
 
-    // Escape tugmasini qo'lga ol
-    editor.addCommand(monaco.KeyCode.Escape, () => {
-      if (currentSuggestion) {
-        rejectSuggestion();
-      }
-    });
+    editor.addCommand(monaco.KeyCode.Tab, () => acceptSuggestion(), "aiSuggestionVisible");
+    editor.addCommand(monaco.KeyCode.Escape, () => rejectSuggestion(), "aiSuggestionVisible");
 
     // AI inline completion — manual trigger only (Ctrl/Cmd + I)
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyI, () => {
       requestCompletion(editor, monaco);
     });
+
 
 
     // Sichqoncha context menu
