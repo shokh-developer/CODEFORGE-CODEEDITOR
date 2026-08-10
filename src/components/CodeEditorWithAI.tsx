@@ -610,24 +610,43 @@ declare module "react-router-dom" {
         )}
       </AnimatePresence>
 
-      {/* Suggestion Accept/Reject Hint */}
+      {/* Suggestion Accept/Reject bar */}
       <AnimatePresence>
         {currentSuggestion && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="absolute bottom-4 left-4 flex items-center gap-4 px-3 py-2 bg-background/90 rounded-lg border border-border"
+            className="absolute bottom-4 left-4 z-30 flex items-center gap-2 px-2 py-1.5 rounded-lg border border-border bg-card/95 backdrop-blur shadow-lg"
           >
-            <span className="text-xs text-muted-foreground">
-              <kbd className="px-1.5 py-0.5 rounded bg-muted text-xs">Tab</kbd> accept
+            <span className="flex items-center gap-1.5 px-1 text-[11px] text-muted-foreground">
+              <Sparkles className="h-3 w-3 text-primary" />
+              AI taklifi
             </span>
-            <span className="text-xs text-muted-foreground">
-              <kbd className="px-1.5 py-0.5 rounded bg-muted text-xs">Esc</kbd> dismiss
-            </span>
+            <button
+              type="button"
+              onClick={acceptSuggestion}
+              title="Qabul qilish (Tab)"
+              className="flex items-center gap-1 rounded-md border border-accent/40 bg-accent/15 px-2 py-1 text-[11px] font-medium text-accent transition-colors hover:bg-accent/25"
+            >
+              <Check className="h-3.5 w-3.5" />
+              Qabul
+              <kbd className="ml-1 rounded bg-muted px-1 text-[10px] text-muted-foreground">Tab</kbd>
+            </button>
+            <button
+              type="button"
+              onClick={rejectSuggestion}
+              title="Rad etish (Esc)"
+              className="flex items-center gap-1 rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1 text-[11px] font-medium text-destructive transition-colors hover:bg-destructive/20"
+            >
+              <X className="h-3.5 w-3.5" />
+              Rad
+              <kbd className="ml-1 rounded bg-muted px-1 text-[10px] text-muted-foreground">Esc</kbd>
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
+
 
       {/* Context Menu - Code Actions */}
       <AnimatePresence>
