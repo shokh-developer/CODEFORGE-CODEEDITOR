@@ -163,7 +163,7 @@ const Index = () => {
       </nav>
 
       {/* ─── Section 1 · Hero ─── */}
-      <section className="relative z-10 border-b border-border/50">
+      <section className="relative z-10 border-b border-border/50 bg-background">
         <motion.div
           variants={container} initial="hidden" animate="show"
           className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28"
@@ -221,7 +221,7 @@ const Index = () => {
       </section>
 
       {/* ─── Section 2 · Workspace access ─── */}
-      <section className="relative z-10 border-b border-border/50 bg-card/30">
+      <section className="relative z-10 border-b border-border/50 bg-card">
         <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
           <p className="font-jetbrains text-[10px] uppercase tracking-[0.24em] text-primary">/ workspace</p>
           <h2 className="font-orbitron mt-3 text-2xl tracking-tighter text-foreground sm:text-3xl">
@@ -287,7 +287,7 @@ const Index = () => {
       </section>
 
       {/* ─── Section 3 · Features ─── */}
-      <section className="relative z-10 border-b border-border/50">
+      <section className="relative z-10 border-b border-border/50 bg-background">
         <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
           <p className="font-jetbrains text-[10px] uppercase tracking-[0.24em] text-primary">/ capabilities</p>
           <h2 className="font-orbitron mt-3 text-2xl tracking-tighter text-foreground sm:text-3xl">
@@ -312,7 +312,7 @@ const Index = () => {
       </section>
 
       {/* ─── Section 4 · Languages ─── */}
-      <section className="relative z-10 bg-card/30">
+      <section className="relative z-10 bg-background">
         <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
           <p className="font-jetbrains text-[10px] uppercase tracking-[0.24em] text-primary">/ languages</p>
           <h2 className="font-orbitron mt-3 text-2xl tracking-tighter text-foreground sm:text-3xl">
