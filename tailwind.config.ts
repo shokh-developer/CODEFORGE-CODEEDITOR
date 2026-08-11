@@ -14,9 +14,10 @@ export default {
     },
     extend: {
       fontFamily: {
-        inter: ['Inter', 'sans-serif'],
+        inter: ['Work Sans', 'sans-serif'],
+        sans: ['Work Sans', 'sans-serif'],
         jetbrains: ['JetBrains Mono', 'monospace'],
-        orbitron: ['Orbitron', 'sans-serif'],
+        orbitron: ['JetBrains Mono', 'monospace'],
       },
       colors: {
         border: "hsl(var(--border))",
