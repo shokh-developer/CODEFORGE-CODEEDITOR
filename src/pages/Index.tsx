@@ -220,7 +220,7 @@ const Index = () => {
       </section>
 
       {/* ─── Section 2 · Workspace access ─── */}
-      <section className="relative z-10 border-b border-border/50 bg-card">
+      <section className="relative z-10 border-b border-border/50 bg-background">
         <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
           <p className="font-jetbrains text-[10px] uppercase tracking-[0.24em] text-primary">/ workspace</p>
           <h2 className="font-orbitron mt-3 text-2xl tracking-tighter text-foreground sm:text-3xl">
