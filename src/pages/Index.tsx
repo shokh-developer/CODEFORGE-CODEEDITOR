@@ -33,8 +33,8 @@ const container = {
   show: { opacity: 1, transition: { staggerChildren: 0.055, delayChildren: 0.06 } },
 };
 const item = {
-  hidden: { opacity: 0, y: 8 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.32, ease: [0.23, 1, 0.32, 1] as const } },
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.34, ease: [0.23, 1, 0.32, 1] as const } },
 };
 
 const Index = () => {
@@ -79,61 +79,55 @@ const Index = () => {
   };
 
   const features = [
-    { icon: Layers,   title: "25+ Languages",   description: "Python, Go, Rust, Swift, Dart, Kotlin and more" },
+    { icon: Layers,   title: "25+ Languages",    description: "Python, Go, Rust, Swift, Dart, Kotlin and more" },
     { icon: Users,    title: "Real-time Collab", description: "Code together with teammates in the same workspace" },
     { icon: Zap,      title: "AI-Powered",       description: "BuildForge AI generates full projects with one prompt" },
     { icon: Terminal, title: "Run & Preview",    description: "Execute code and preview web apps instantly" },
   ];
 
   return (
-    <div className="min-h-screen" style={{ background: "transparent", color: "#f1f5f9" }}>
+    <div className="min-h-screen bg-background text-foreground">
       <SpaceBackground />
 
       {/* ─── Nav ─── */}
-      <nav className="sticky top-0 z-50 border-b border-white/[0.06] bg-black/50 backdrop-blur-2xl">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-13 flex items-center justify-between" style={{ height: "52px" }}>
-          {/* Logo */}
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background: "rgba(139,92,246,0.15)", border: "1px solid rgba(139,92,246,0.25)" }}>
-              <Braces className="h-3 w-3" style={{ color: "#a78bfa" }} />
+      <nav className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-xl">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md border border-primary/30 bg-primary/10">
+              <Braces className="h-3.5 w-3.5 text-primary" />
             </div>
-            <span className="font-orbitron text-[12px] tracking-tight text-white/90">CodeForge</span>
+            <span className="font-orbitron text-[13px] tracking-tighter text-foreground">
+              code<span className="text-primary">forge</span>
+            </span>
           </div>
 
-          {/* Right actions */}
           <div className="flex items-center gap-1">
-            <Button
-              variant="ghost" size="sm"
+            <Button variant="ghost" size="sm"
               onClick={() => navigate("/typing")}
-              className="text-xs h-8 px-3 text-white/50 hover:text-white/80 hover:bg-white/[0.06]"
-            >
+              className="h-8 px-3 text-xs text-muted-foreground hover:text-foreground">
               Typing
             </Button>
-            <Button
-              variant="ghost" size="sm"
+            <Button variant="ghost" size="sm"
               onClick={() => navigate("/pricing")}
-              className="text-xs h-8 px-3 text-white/50 hover:text-white/80 hover:bg-white/[0.06]"
-            >
+              className="h-8 px-3 text-xs text-muted-foreground hover:text-foreground">
               Pricing
             </Button>
 
             {loading ? (
-              <div className="w-7 h-7 rounded-full animate-pulse" style={{ background: "rgba(255,255,255,0.08)" }} />
+              <div className="h-7 w-7 animate-pulse rounded-full bg-muted" />
             ) : isAuthenticated ? (
               <>
                 <CreditBadge className="hidden sm:inline-flex" />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors hover:bg-white/[0.06]">
+                    <button className="flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-muted/60">
                       <Avatar className="h-6 w-6">
                         <AvatarImage src={profile?.avatar_url || undefined} />
-                        <AvatarFallback className="text-[9px] font-semibold"
-                          style={{ background: "rgba(139,92,246,0.2)", color: "#a78bfa" }}>
+                        <AvatarFallback className="bg-primary/15 text-[9px] font-semibold text-primary">
                           {getInitials(profile?.display_name || user?.email)}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-xs hidden sm:inline font-medium text-white/70">
+                      <span className="hidden text-xs font-medium text-muted-foreground sm:inline">
                         {profile?.display_name || user?.email?.split("@")[0]}
                       </span>
                     </button>
@@ -149,7 +143,7 @@ const Index = () => {
                       <Settings className="h-3.5 w-3.5 text-muted-foreground" /> Settings
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleSignOut} className="text-destructive cursor-pointer gap-2 text-xs">
+                    <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer gap-2 text-xs text-destructive">
                       <LogOut className="h-3.5 w-3.5" /> Sign out
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -158,11 +152,7 @@ const Index = () => {
             ) : (
               <button
                 onClick={() => setShowAuthModal(true)}
-                className="flex items-center gap-1.5 h-8 px-4 rounded-lg text-xs font-medium text-white transition-all duration-200"
-                style={{
-                  background: "linear-gradient(135deg, #7c3aed, #4f46e5)",
-                  boxShadow: "0 0 18px rgba(124,58,237,0.35)",
-                }}
+                className="flex h-8 items-center gap-1.5 rounded-md bg-primary px-4 text-xs font-semibold text-primary-foreground transition-colors hover:bg-accent"
               >
                 <User className="h-3 w-3" />
                 Sign In
@@ -172,256 +162,183 @@ const Index = () => {
         </div>
       </nav>
 
-      {/* ─── Main ─── */}
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-10 sm:pt-14 pb-14 relative z-10">
+      {/* ─── Section 1 · Hero ─── */}
+      <section className="relative z-10 border-b border-border/50">
         <motion.div
           variants={container} initial="hidden" animate="show"
-          className="grid lg:grid-cols-[1fr_370px] gap-8 xl:gap-10 items-start"
+          className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28"
         >
-          {/* ─── Left: Hero ─── */}
-          <div className="space-y-6 pt-2 lg:pt-6">
+          <motion.div variants={item}
+            className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/[0.07] px-3.5 py-1.5 text-[11px] text-primary">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+            </span>
+            AI-powered collaborative coding
+          </motion.div>
 
-            {/* Status pill */}
-            <motion.div variants={item}
-              className="inline-flex items-center gap-2 rounded-full text-[11px] px-3.5 py-1.5"
-              style={{
-                border: "1px solid rgba(139,92,246,0.22)",
-                background: "rgba(139,92,246,0.08)",
-                color: "rgba(196,181,253,0.85)",
-              }}
+          <motion.h1 variants={item}
+            className="font-orbitron mt-7 max-w-3xl text-4xl leading-[1.05] tracking-tighter text-foreground sm:text-6xl">
+            Build, run and ship
+            <br />
+            <span className="text-primary">in one workspace.</span>
+          </motion.h1>
+
+          <motion.p variants={item}
+            className="mt-6 max-w-xl text-sm leading-7 text-muted-foreground">
+            CodeForge — real-time collaborative editor, instant preview and BuildForge AI
+            that generates complete projects from a single prompt.
+          </motion.p>
+
+          <motion.div variants={item} className="mt-9 flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => isAuthenticated ? navigate("/my-rooms") : setShowAuthModal(true)}
+              className="flex h-10 items-center gap-2 rounded-md bg-primary px-5 text-[13px] font-semibold text-primary-foreground transition-colors hover:bg-accent"
             >
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60"
-                  style={{ background: "#a78bfa" }} />
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: "#a78bfa" }} />
-              </span>
-              AI-powered collaborative coding
-            </motion.div>
+              Start coding <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => navigate("/pricing")}
+              className="flex h-10 items-center gap-2 rounded-md border border-border bg-card px-5 text-[13px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+            >
+              View pricing
+            </button>
+          </motion.div>
 
-            {/* Eyebrow + Heading */}
-            <div className="space-y-4">
-              <motion.p variants={item}
-                className="font-mono text-[10px] uppercase tracking-[0.22em] font-medium"
-                style={{ color: "rgba(167,139,250,0.65)" }}
+          <motion.div variants={item} className="mt-14 grid max-w-2xl grid-cols-3 gap-px overflow-hidden rounded-lg border border-border bg-border">
+            {[
+              { value: "25+",   label: "Languages" },
+              { value: "Live",  label: "Preview & Rooms" },
+              { value: "Smart", label: "Built-in AI" },
+            ].map((s) => (
+              <div key={s.label} className="bg-card px-4 py-5">
+                <p className="font-orbitron text-xl tracking-tighter text-primary">{s.value}</p>
+                <p className="mt-1 text-[11px] font-medium text-muted-foreground">{s.label}</p>
+              </div>
+            ))}
+          </motion.div>
+        </motion.div>
+      </section>
+
+      {/* ─── Section 2 · Workspace access ─── */}
+      <section className="relative z-10 border-b border-border/50 bg-card/30">
+        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+          <p className="font-jetbrains text-[10px] uppercase tracking-[0.24em] text-primary">/ workspace</p>
+          <h2 className="font-orbitron mt-3 text-2xl tracking-tighter text-foreground sm:text-3xl">
+            Create a room or join a session
+          </h2>
+
+          <div className="mt-8 grid gap-4 md:grid-cols-2">
+            {/* New Room */}
+            <div className="rounded-lg border border-border bg-card p-5">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-md border border-primary/30 bg-primary/10">
+                  <Plus className="h-3.5 w-3.5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-[13px] font-semibold text-foreground">New Room</h3>
+                  <p className="text-[11px] text-muted-foreground">Start a fresh session</p>
+                </div>
+              </div>
+              <Input
+                placeholder="Room name..."
+                value={roomName}
+                onChange={(e) => setRoomName(e.target.value)}
+                className="mt-4 h-9 text-xs"
+                onKeyDown={(e) => e.key === "Enter" && handleCreateRoom()}
+              />
+              <button
+                onClick={handleCreateRoom}
+                disabled={isCreating}
+                className="mt-3 flex h-9 w-full items-center justify-center gap-1.5 rounded-md bg-primary text-xs font-semibold text-primary-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
               >
-                High-end developer experience
-              </motion.p>
-
-              <motion.div variants={item}>
-                <h1 className="font-orbitron leading-[1.06] tracking-tight">
-                  <span
-                    className="block"
-                    style={{
-                      fontSize: "clamp(2.4rem, 5.5vw, 3.8rem)",
-                      background: "linear-gradient(135deg, #c4b5fd 0%, #818cf8 50%, #7dd3fc 100%)",
-                      WebkitBackgroundClip: "text",
-                      WebkitTextFillColor: "transparent",
-                      backgroundClip: "text",
-                    }}
-                  >
-                    BUILD.
-                  </span>
-                  <span className="block text-white" style={{ fontSize: "clamp(2.4rem, 5.5vw, 3.8rem)" }}>
-                    CODE.
-                  </span>
-                  <span className="block" style={{ fontSize: "clamp(2.4rem, 5.5vw, 3.8rem)", color: "rgba(255,255,255,0.28)" }}>
-                    DEPLOY.
-                  </span>
-                </h1>
-              </motion.div>
-
-              <motion.p variants={item} className="text-[13px] leading-7 max-w-[400px]" style={{ color: "#94a3b8" }}>
-                Write, run, preview, and ship projects in one premium workspace — with live collaboration and AI assistance.
-              </motion.p>
+                {isCreating ? "Creating..." : "Create Room"}
+                <ArrowRight className="h-3 w-3" />
+              </button>
             </div>
 
-            {/* Stat cards */}
-            <motion.div variants={item} className="grid grid-cols-3 gap-2 max-w-[320px]">
-              {[
-                { value: "25+",   label: "Languages" },
-                { value: "Live",  label: "Preview & Rooms" },
-                { value: "Smart", label: "Built-in AI" },
-              ].map((s, i) => (
-                <div key={i}
-                  className="rounded-xl px-3 py-3 transition-all duration-200 cursor-default"
-                  style={{
-                    border: "1px solid rgba(255,255,255,0.07)",
-                    background: "rgba(255,255,255,0.03)",
-                  }}
-                >
-                  <p className="text-base font-orbitron text-white tracking-tight">{s.value}</p>
-                  <p className="text-[10px] mt-0.5 font-medium" style={{ color: "#475569" }}>{s.label}</p>
+            {/* Join Room */}
+            <div className="rounded-lg border border-border bg-card p-5">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-muted/40">
+                  <LogIn className="h-3.5 w-3.5 text-muted-foreground" />
                 </div>
-              ))}
-            </motion.div>
-          </div>
-
-          {/* ─── Right: Workspace Access ─── */}
-          <div className="space-y-3 lg:pt-4">
-
-            {/* Main card */}
-            <motion.div variants={item}
-              className="rounded-2xl p-4 space-y-4"
-              style={{
-                border: "1px solid rgba(255,255,255,0.08)",
-                background: "rgba(255,255,255,0.04)",
-                backdropFilter: "blur(16px)",
-              }}
-            >
-              {/* Card header */}
-              <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="font-orbitron text-[13px] text-white tracking-tight">Workspace Access</p>
-                  <p className="text-[11px] mt-0.5" style={{ color: "#475569" }}>
-                    Create a room or join an existing session.
-                  </p>
-                </div>
-                <div className="flex-shrink-0 h-8 w-8 flex items-center justify-center rounded-lg"
-                  style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.04)" }}>
-                  <Code className="h-3.5 w-3.5" style={{ color: "rgba(167,139,250,0.65)" }} />
+                  <h3 className="text-[13px] font-semibold text-foreground">Join Room</h3>
+                  <p className="text-[11px] text-muted-foreground">Connect to an existing one</p>
                 </div>
               </div>
-
-              {/* Room cards */}
-              <div className="grid sm:grid-cols-2 gap-2.5">
-
-                {/* New Room */}
-                <div className="rounded-xl p-3.5 space-y-3 group transition-all duration-200"
-                  style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.03)" }}
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.25)" }}>
-                      <Plus className="h-3 w-3" style={{ color: "#a78bfa" }} />
-                    </div>
-                    <div>
-                      <h2 className="text-[11px] font-semibold text-white">New Room</h2>
-                      <p className="text-[10px]" style={{ color: "#475569" }}>Start a session</p>
-                    </div>
-                  </div>
-                  <Input
-                    placeholder="Room name..."
-                    value={roomName}
-                    onChange={(e) => setRoomName(e.target.value)}
-                    className="h-8 text-xs bg-transparent text-white placeholder:text-slate-600"
-                    style={{ borderColor: "rgba(255,255,255,0.1)" }}
-                    onKeyDown={(e) => e.key === "Enter" && handleCreateRoom()}
-                  />
-                  <button
-                    onClick={handleCreateRoom}
-                    disabled={isCreating}
-                    className="w-full h-8 rounded-lg text-xs font-medium text-white flex items-center justify-center gap-1.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ background: "linear-gradient(135deg, #7c3aed, #4338ca)" }}
-                  >
-                    {isCreating ? "Creating..." : "Create Room"}
-                    <ArrowRight className="h-3 w-3" />
-                  </button>
-                </div>
-
-                {/* Join Room */}
-                <div className="rounded-xl p-3.5 space-y-3 transition-all duration-200"
-                  style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.03)" }}
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.05)" }}>
-                      <LogIn className="h-3 w-3" style={{ color: "#64748b" }} />
-                    </div>
-                    <div>
-                      <h2 className="text-[11px] font-semibold text-white">Join Room</h2>
-                      <p className="text-[10px]" style={{ color: "#475569" }}>Connect to existing</p>
-                    </div>
-                  </div>
-                  <Input
-                    placeholder="Room ID or link..."
-                    value={joinRoomId}
-                    onChange={(e) => setJoinRoomId(e.target.value)}
-                    className="h-8 text-xs bg-transparent text-white placeholder:text-slate-600"
-                    style={{ borderColor: "rgba(255,255,255,0.1)" }}
-                    onKeyDown={(e) => e.key === "Enter" && handleJoinRoom()}
-                  />
-                  <button
-                    onClick={handleJoinRoom}
-                    className="w-full h-8 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all duration-200"
-                    style={{
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      background: "rgba(255,255,255,0.05)",
-                      color: "#94a3b8",
-                    }}
-                  >
-                    Join Room <ArrowRight className="h-3 w-3" />
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Feature grid */}
-            <motion.div className="grid sm:grid-cols-2 gap-2" variants={container} initial="hidden" animate="show">
-              {features.map((f, i) => (
-                <motion.div key={i} variants={item}
-                  className="rounded-xl p-3 transition-all duration-200"
-                  style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.03)" }}
-                >
-                  <div className="inline-flex w-7 h-7 items-center justify-center rounded-lg mb-2"
-                    style={{ background: "rgba(124,58,237,0.12)", border: "1px solid rgba(124,58,237,0.18)" }}>
-                    <f.icon className="h-3 w-3" style={{ color: "#a78bfa" }} />
-                  </div>
-                  <h3 className="text-[11px] font-semibold text-white mb-0.5">{f.title}</h3>
-                  <p className="text-[10px] leading-relaxed" style={{ color: "#475569" }}>{f.description}</p>
-                </motion.div>
-              ))}
-            </motion.div>
+              <Input
+                placeholder="Room ID or link..."
+                value={joinRoomId}
+                onChange={(e) => setJoinRoomId(e.target.value)}
+                className="mt-4 h-9 text-xs"
+                onKeyDown={(e) => e.key === "Enter" && handleJoinRoom()}
+              />
+              <button
+                onClick={handleJoinRoom}
+                className="mt-3 flex h-9 w-full items-center justify-center gap-1.5 rounded-md border border-border bg-muted/30 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+              >
+                Join Room <ArrowRight className="h-3 w-3" />
+              </button>
+            </div>
           </div>
-        </motion.div>
+        </div>
+      </section>
 
-        {/* ─── Supported Languages ─── */}
-        <div className="mt-10 pt-8" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-          <p className="text-[10px] mb-3 uppercase tracking-[0.16em] font-medium text-center lg:text-left"
-            style={{ color: "#334155" }}>
-            Supported Languages
-          </p>
-          <div className="flex flex-wrap justify-center lg:justify-start gap-1.5">
+      {/* ─── Section 3 · Features ─── */}
+      <section className="relative z-10 border-b border-border/50">
+        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+          <p className="font-jetbrains text-[10px] uppercase tracking-[0.24em] text-primary">/ capabilities</p>
+          <h2 className="font-orbitron mt-3 text-2xl tracking-tighter text-foreground sm:text-3xl">
+            Everything in one editor
+          </h2>
+
+          <motion.div
+            className="mt-8 grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2 lg:grid-cols-4"
+            variants={container} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.2 }}
+          >
+            {features.map((f) => (
+              <motion.div key={f.title} variants={item} className="bg-card p-5">
+                <div className="mb-3 inline-flex h-8 w-8 items-center justify-center rounded-md border border-primary/25 bg-primary/10">
+                  <f.icon className="h-3.5 w-3.5 text-primary" />
+                </div>
+                <h3 className="text-[13px] font-semibold text-foreground">{f.title}</h3>
+                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{f.description}</p>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ─── Section 4 · Languages ─── */}
+      <section className="relative z-10 bg-card/30">
+        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+          <p className="font-jetbrains text-[10px] uppercase tracking-[0.24em] text-primary">/ languages</p>
+          <h2 className="font-orbitron mt-3 text-2xl tracking-tighter text-foreground sm:text-3xl">
+            25+ supported languages
+          </h2>
+          <div className="mt-7 flex flex-wrap gap-2">
             {LANGUAGES.map((lang) => (
               <span
                 key={lang}
-                className="font-jetbrains cursor-default transition-all duration-150"
-                style={{
-                  fontSize: "10px",
-                  padding: "3px 10px",
-                  borderRadius: "6px",
-                  border: "1px solid rgba(255,255,255,0.07)",
-                  background: "rgba(255,255,255,0.03)",
-                  color: "#475569",
-                }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLElement).style.color = "#c4b5fd";
-                  (e.currentTarget as HTMLElement).style.borderColor = "rgba(139,92,246,0.28)";
-                  (e.currentTarget as HTMLElement).style.background = "rgba(139,92,246,0.07)";
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLElement).style.color = "#475569";
-                  (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.07)";
-                  (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.03)";
-                }}
+                className="font-jetbrains cursor-default rounded-md border border-border bg-card px-2.5 py-1 text-[10px] text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/[0.07] hover:text-primary"
               >
                 {lang}
               </span>
             ))}
           </div>
         </div>
-      </main>
+      </section>
 
       {/* ─── Footer ─── */}
-      <footer className="relative z-10 py-5 backdrop-blur-sm"
-        style={{ borderTop: "1px solid rgba(255,255,255,0.06)", background: "rgba(0,0,0,0.25)" }}>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <footer className="relative z-10 border-t border-border/60 bg-background py-6">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-4 sm:flex-row sm:px-6">
           <div className="flex items-center gap-2">
-            <Braces className="h-3 w-3" style={{ color: "rgba(167,139,250,0.4)" }} />
-            <span className="font-orbitron text-[11px] tracking-tight" style={{ color: "rgba(255,255,255,0.35)" }}>
-              CodeForge
-            </span>
+            <Braces className="h-3 w-3 text-primary/60" />
+            <span className="font-orbitron text-[11px] tracking-tighter text-muted-foreground">codeforge</span>
           </div>
-          <p className="text-[10px]" style={{ color: "#334155" }}>
+          <p className="text-[10px] text-muted-foreground/70">
             Real-time coding, preview, and AI assistance in one workspace.
           </p>
         </div>
