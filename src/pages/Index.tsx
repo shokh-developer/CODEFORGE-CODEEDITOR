@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import SpaceBackground from "@/components/SpaceBackground";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -87,7 +86,6 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <SpaceBackground />
 
       {/* ─── Nav ─── */}
       <nav className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-xl">
@@ -163,7 +161,7 @@ const Index = () => {
       </nav>
 
       {/* ─── Section 1 · Hero ─── */}
-      <section className="relative z-10 border-b border-border/50">
+      <section className="relative z-10 border-b border-border/50 bg-background">
 
         <motion.div
           variants={container} initial="hidden" animate="show"
@@ -222,7 +220,7 @@ const Index = () => {
       </section>
 
       {/* ─── Section 2 · Workspace access ─── */}
-      <section className="relative z-10 border-b border-border/50 bg-card">
+      <section className="relative z-10 border-b border-border/50 bg-background">
         <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
           <p className="font-jetbrains text-[10px] uppercase tracking-[0.24em] text-primary">/ workspace</p>
           <h2 className="font-orbitron mt-3 text-2xl tracking-tighter text-foreground sm:text-3xl">
