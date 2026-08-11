@@ -161,7 +161,7 @@ const Index = () => {
       </nav>
 
       {/* ─── Section 1 · Hero ─── */}
-      <section className="relative z-10 border-b border-border/50">
+      <section className="relative z-10 border-b border-border/50 bg-background">
 
         <motion.div
           variants={container} initial="hidden" animate="show"
