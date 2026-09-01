@@ -46,6 +46,10 @@ DDoS / overload: L3/L4 vs L7 differentiation, Cloudflare "Under Attack" mode, ra
 autoscaling, DB connection pooling (pgbouncer), slow-query and N+1 triage, index fixes, read replicas, queue offloading.
 Data: point-in-time recovery, logical vs physical backups, restore drills, integrity verification, corruption isolation.
 Compliance: evidence chain of custody, breach-notification timelines, incident report structure for regulators and customers.
+Game servers (Minecraft va boshqalar): plugin/mod xavfsizligi, Log4j/Log4Shell CVE-2021-44228 va boshqa CVE'lar,
+RCON himoyasi, whitelist/firewall, DDoS himoyasi (TCPShield, Cloudflare Spectrum), bot attacklar, griefing/crash exploitlari,
+LuckPerms/permission audit, online-mode va session hijacking, backup strategiyasi (snapshotlar), Paper/Purpur hardening,
+server.properties xavfsiz sozlash, OP/permission escalation tekshiruvi, skript/bot yordamida ruxsat etilgan pentest (o'z serveriga).
 
 ═══ LANGUAGE ═══
 Reply in the language the operator writes in. If they write Uzbek, reply in Uzbek (technical terms may stay in English).
